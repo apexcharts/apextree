@@ -189,6 +189,38 @@ External labels can be configured globally via the top-level `externalLabel` opt
 | --- | --- | --- | --- |
 | `a11y` | `{ enabled?: boolean, label?: string }` | `{ enabled: true, label: 'Organizational chart' }` | WCAG 2.1 AA accessibility. Adds ARIA tree semantics, keyboard navigation, and visible focus indicators. Set `label` to customise the SVG `aria-label`. |
 
+### Localization & RTL
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `locale` | `{ direction?: 'ltr' \| 'rtl' \| 'auto', messages?: Partial<TreeMessages> }` | `{ direction: 'ltr' }` | Localization and text-direction. `direction: 'rtl'` mirrors the tree horizontally and sets `dir="rtl"` on the container so node text and the search/breadcrumb chrome flow right-to-left (`'auto'` defers to the document); RTL mirroring is tuned for the vertical `'top'`/`'bottom'` directions. `messages` overrides any user-facing string. |
+
+All user-facing strings live in `TreeMessages`; supply a `Partial<TreeMessages>` to translate any subset (unset keys keep their English defaults, exported as `DEFAULT_TREE_MESSAGES`). Plain labels are strings; values that embed runtime data are functions so each locale controls grammar and pluralization.
+
+| `TreeMessages` key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rootAriaLabel` | `string` | `'Organizational chart'` | Root SVG `aria-label` (the legacy `a11y.label` still overrides this). |
+| `searchPlaceholder` | `string` | `'Search nodes…'` | Search input placeholder. |
+| `searchAriaLabel` | `string` | `'Search tree nodes'` | Search input `aria-label`. |
+| `searchMatchCount` | `(count: number) => string` | `` `${n} match`/`${n} matches` `` | Search match-count text. |
+| `breadcrumbAriaLabel` | `string` | `'Tree path'` | Breadcrumb `<nav>` `aria-label`. |
+| `expandNodeLabel` | `string` | `'Expand node'` | Expand-button `aria-label`. |
+| `collapseNodeLabel` | `string` | `'Collapse node'` | Collapse-button `aria-label`. |
+| `nodeAriaLabel` | `(ctx: NodeAriaContext) => string` | `` `${name}, level ${level}, ${position} of ${total}${state}` `` | Builds each node's `aria-label`. |
+
+```ts
+const tree = new ApexTree(el, {
+  direction: 'top',
+  locale: {
+    direction: 'rtl',
+    messages: {
+      searchPlaceholder: 'بحث…',
+      searchMatchCount: (n) => `${n} نتيجة`,
+    },
+  },
+});
+```
+
 ## Node Templates
 
 ### Default template

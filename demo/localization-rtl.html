@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ApexTree - Localization &amp; RTL</title>
+    <script src="../apextree.min.js"></script>
+    <style>
+      :root {
+        --ink: #1a1a2e;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --accent: #6366f1;
+        --accent-bg: #eef2ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, system-ui, sans-serif;
+        margin: 0 auto;
+        padding: 24px;
+        max-width: 1040px;
+        color: var(--ink);
+        background: #fff;
+      }
+      h2 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 0;
+        line-height: 1.5;
+      }
+      .switcher {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 18px 0;
+      }
+      .lang-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 14px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          color 0.15s;
+      }
+      .lang-btn:hover {
+        border-color: var(--accent);
+      }
+      .lang-btn.active {
+        background: var(--accent-bg);
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .lang-btn .dir {
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        opacity: 0.75;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        padding: 0 4px;
+      }
+      .legend {
+        margin-top: 14px;
+        font-size: 12.5px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .legend code {
+        background: #f1f5f9;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 12px;
+      }
+      .legend b {
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h2>Localization &amp; RTL</h2>
+      <p class="subtitle">
+        Pick a language to re-render the tree. The growth direction stays vertical; only
+        <code>locale.direction</code> and <code>locale.messages</code> change. Node names are translated to make the
+        switch visible, while the search box, breadcrumb, match count, and node aria-labels come from the message
+        dictionary.
+      </p>
+    </header>
+
+    <div class="switcher" id="switcher"></div>
+
+    <div id="host"></div>
+
+    <p class="legend">
+      Localized here: <b>search placeholder + aria-label</b>, <b>match-count text</b>, <b>breadcrumb aria-label</b>,
+      <b>root + node aria-labels</b> (open DevTools to inspect), and full <b>RTL mirroring</b> for Arabic / Hebrew.
+      Defaults (no <code>locale</code>) stay English, left-to-right.
+    </p>
+
+    <script>
+      // names: org-chart roles, translated so the re-render is visually obvious.
+      // messages: the user-facing strings ApexTree exposes via locale.messages.
+      const LOCALES = {
+        en: {
+          label: 'English',
+          dir: 'ltr',
+          names: {
+            ceo: 'Chief Executive',
+            eng: 'Engineering',
+            fin: 'Finance',
+            mkt: 'Marketing',
+            dev: 'Developer',
+            acc: 'Accountant',
+          },
+          messages: {
+            searchPlaceholder: 'Search nodes…',
+            searchAriaLabel: 'Search tree nodes',
+            breadcrumbAriaLabel: 'Tree path',
+            rootAriaLabel: 'Organizational chart',
+            searchMatchCount: (n) => (n === 1 ? '1 match' : `${n} matches`),
+            nodeAriaLabel: ({name, level, position, total}) => `${name}, level ${level}, ${position} of ${total}`,
+          },
+        },
+        fr: {
+          label: 'Français',
+          dir: 'ltr',
+          names: {
+            ceo: 'Directeur général',
+            eng: 'Ingénierie',
+            fin: 'Finance',
+            mkt: 'Marketing',
+            dev: 'Développeur',
+            acc: 'Comptable',
+          },
+          messages: {
+            searchPlaceholder: 'Rechercher des nœuds…',
+            searchAriaLabel: 'Rechercher dans l’arborescence',
+            breadcrumbAriaLabel: 'Chemin de l’arborescence',
+            rootAriaLabel: 'Organigramme',
+            searchMatchCount: (n) => (n === 1 ? '1 résultat' : `${n} résultats`),
+            nodeAriaLabel: ({name, level, position, total}) => `${name}, niveau ${level}, ${position} sur ${total}`,
+          },
+        },
+        ar: {
+          label: 'العربية',
+          dir: 'rtl',
+          names: {ceo: 'الرئيس التنفيذي', eng: 'الهندسة', fin: 'المالية', mkt: 'التسويق', dev: 'مطور', acc: 'محاسب'},
+          messages: {
+            searchPlaceholder: 'ابحث في العقد…',
+            searchAriaLabel: 'ابحث في الشجرة',
+            breadcrumbAriaLabel: 'مسار الشجرة',
+            rootAriaLabel: 'الهيكل التنظيمي',
+            searchMatchCount: (n) => (n === 1 ? 'نتيجة واحدة' : `${n} نتائج`),
+            nodeAriaLabel: ({name, level, position, total}) => `${name}، المستوى ${level}، ${position} من ${total}`,
+          },
+        },
+        he: {
+          label: 'עברית',
+          dir: 'rtl',
+          names: {ceo: 'מנכ"ל', eng: 'הנדסה', fin: 'כספים', mkt: 'שיווק', dev: 'מפתח', acc: 'רואה חשבון'},
+          messages: {
+            searchPlaceholder: 'חיפוש צמתים…',
+            searchAriaLabel: 'חיפוש בעץ',
+            breadcrumbAriaLabel: 'נתיב העץ',
+            rootAriaLabel: 'תרשים ארגוני',
+            searchMatchCount: (n) => (n === 1 ? 'תוצאה אחת' : `${n} תוצאות`),
+            nodeAriaLabel: ({name, level, position, total}) => `${name}, רמה ${level}, ${position} מתוך ${total}`,
+          },
+        },
+      };
+
+      const ORDER = ['en', 'fr', 'ar', 'he'];
+
+      function buildData(n) {
+        return {
+          id: 'ceo',
+          name: n.ceo,
+          children: [
+            {id: 'eng', name: n.eng, children: [{id: 'dev', name: n.dev}]},
+            {id: 'fin', name: n.fin, children: [{id: 'acc', name: n.acc}]},
+            {id: 'mkt', name: n.mkt},
+          ],
+        };
+      }
+
+      const host = document.getElementById('host');
+      const switcher = document.getElementById('switcher');
+
+      function mount(key) {
+        const cfg = LOCALES[key];
+
+        // Flip the whole page so the chrome around the chart follows the language too.
+        document.documentElement.setAttribute('lang', key);
+        document.documentElement.setAttribute('dir', cfg.dir);
+        [...switcher.children].forEach((b) => b.classList.toggle('active', b.dataset.key === key));
+
+        // Fresh mount node: ApexTree renders its toolbar/search/breadcrumb inside the
+        // container, so replacing the node fully tears down the previous instance.
+        host.innerHTML = '';
+        const el = document.createElement('div');
+        host.appendChild(el);
+
+        const tree = new ApexTree(el, {
+          width: '100%',
+          viewPortWidth: 1000,
+          viewPortHeight: 480,
+          nodeWidth: 150,
+          nodeHeight: 46,
+          direction: 'top',
+          enableToolbar: true,
+          enableSearch: true,
+          enableBreadcrumb: true,
+          canvasStyle: 'border: 1px solid #e2e8f0; border-radius: 8px;',
+          locale: {direction: cfg.dir, messages: cfg.messages},
+        });
+        tree.render(buildData(cfg.names));
+      }
+
+      ORDER.forEach((key) => {
+        const cfg = LOCALES[key];
+        const btn = document.createElement('button');
+        btn.className = 'lang-btn';
+        btn.dataset.key = key;
+        btn.innerHTML = `<span>${cfg.label}</span><span class="dir">${cfg.dir.toUpperCase()}</span>`;
+        btn.addEventListener('click', () => mount(key));
+        switcher.appendChild(btn);
+      });
+
+      mount('en');
+    </script>
+  </body>
+</html>

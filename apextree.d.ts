@@ -44,6 +44,8 @@ declare class WrappedEl {}
 
 
 
+declare type TextDirection = 'ltr' | 'rtl' | 'auto';
+
 
 
 /**
@@ -209,6 +211,8 @@ export declare interface CommonOptions {
     readonly height: number | string;
     /** Highlight the hovered node and its connecting edges. @default true */
     readonly highlightOnHover: boolean;
+    /** Localization and text-direction (RTL) options. See {@link LocaleOptions}. @default { direction: 'ltr' } */
+    readonly locale?: LocaleOptions;
     /**
      * Horizontal padding around the rendered tree, in pixels. Adds breathing
      * room between the leftmost/rightmost nodes (and any external labels that
@@ -242,6 +246,13 @@ export declare interface CommonOptions {
     /** Width of the canvas. Accepts a pixel number or CSS percentage string. @default '100%' */
     readonly width: number | string;
 }
+
+/**
+ * English defaults for every {@link TreeMessages} string. These reproduce the
+ * exact text the tree rendered before localization support, so a chart with no
+ * `locale.messages` overrides is visually and semantically unchanged.
+ */
+export declare const DEFAULT_TREE_MESSAGES: TreeMessages;
 
 /**
  * Controls how edge (connector) colors are determined.
@@ -382,6 +393,8 @@ declare class Graph extends Paper {
     private nodeMap;
     /** Options resolved with CSS custom property overrides for the current render pass. */
     private renderOptions;
+    /** Resolved, localized user-facing strings. Recomputed when options change. */
+    private messages;
     /** Keyboard navigator instance (created lazily when a11y is enabled). */
     private keyboardNavigator;
     /** Breadcrumb listener invoked on node click when `enableBreadcrumb` is on. */
@@ -402,12 +415,23 @@ declare class Graph extends Paper {
      */
     private savedGraphPositions;
     constructor(element: HTMLElement, options: TreeOptions, chartContext: ChartContext);
+    /** Resolved, localized strings for this chart (English defaults + `locale.messages`). */
+    getMessages(): TreeMessages;
+    /** Whether the current `locale.direction` resolves to right-to-left. */
+    getIsRtl(): boolean;
     /**
      * Snapshot graph-level (x, y) for every node in the current layout.
      * Called before setGraphNodesAndEdges() destroys the old graph.
      */
     private mergeGraphPositions;
     private calculateLayout;
+    /**
+     * Mirror every laid-out node horizontally around the layout's center so the
+     * tree reads right-to-left. Edges and leaf groups derive their geometry from
+     * node positions, so flipping `node.x` mirrors the whole drawing. Tuned for
+     * the vertical ('top'/'bottom') directions where sibling order should reverse.
+     */
+    private mirrorLayoutForRtl;
     private resetGraph;
     private setGraphNodesAndEdges;
     private setNodesRecursively;
@@ -512,6 +536,25 @@ declare class Graph extends Paper {
 }
 
 /**
+ * Localization and text-direction options.
+ *
+ * With the defaults (`direction: 'ltr'`, no message overrides) the output is
+ * byte-for-byte identical to builds that predate i18n support.
+ */
+export declare interface LocaleOptions {
+    /**
+     * Text and layout direction. `'rtl'` mirrors the tree horizontally and sets
+     * `dir="rtl"` on the container (so node text and the search/breadcrumb chrome
+     * flow right-to-left); `'auto'` defers to the document/element direction.
+     * RTL mirroring is tuned for the vertical (`'top'`/`'bottom'`) growth directions.
+     * @default 'ltr'
+     */
+    readonly direction?: TextDirection;
+    /** Overrides for user-facing strings. See {@link TreeMessages}. */
+    readonly messages?: Partial<TreeMessages>;
+}
+
+/**
  * Recursive node structure passed to `ApexTree.render()`.
  *
  * Each node must have a unique `id` and a `name` for the display label.
@@ -558,6 +601,23 @@ declare interface Node_2<T = undefined> {
     readonly onlyLeafNodes?: boolean;
     readonly options?: FontOptions & NodeOptions & TooltipOptions;
     readonly parent?: string;
+}
+
+/**
+ * Context passed to {@link TreeMessages.nodeAriaLabel} so translators can build
+ * a grammatically correct per-node label in any language.
+ */
+export declare interface NodeAriaContext {
+    /** 1-based depth of the node (root = 1). */
+    readonly level: number;
+    /** Resolved node display name. */
+    readonly name: string;
+    /** 1-based position of the node among its siblings. */
+    readonly position: number;
+    /** Expand/collapse state. Omitted for nodes without children. */
+    readonly state?: 'collapsed' | 'expanded';
+    /** Number of siblings, including this node. */
+    readonly total: number;
 }
 
 /**
@@ -790,6 +850,8 @@ declare class Paper {
     setTreeA11yAttributes(label: string, selectionMode?: 'multi' | 'single' | false): void;
 }
 
+export { TextDirection }
+
 /**
  * Options for the hover tooltip shown above each tree node.
  *
@@ -830,6 +892,32 @@ export declare interface TooltipOptions {
  * - `'right'` — root on the right, children flow leftward
  */
 export declare type TreeDirection = 'bottom' | 'left' | 'right' | 'top';
+
+/**
+ * Every user-facing string rendered by the tree.
+ *
+ * Override any subset via {@link LocaleOptions.messages}; unset keys fall back
+ * to their English defaults ({@link DEFAULT_TREE_MESSAGES}). Strings that embed
+ * runtime values are functions so each locale controls grammar and pluralization.
+ */
+export declare interface TreeMessages {
+    /** Breadcrumb `<nav>` aria-label. @default 'Tree path' */
+    readonly breadcrumbAriaLabel: string;
+    /** Collapse-button aria-label. @default 'Collapse node' */
+    readonly collapseNodeLabel: string;
+    /** Expand-button aria-label. @default 'Expand node' */
+    readonly expandNodeLabel: string;
+    /** Builds a node's aria-label. @default `${name}, level ${level}, ${position} of ${total}${state}` */
+    readonly nodeAriaLabel: (ctx: NodeAriaContext) => string;
+    /** Root SVG aria-label. @default 'Organizational chart' */
+    readonly rootAriaLabel: string;
+    /** Search input aria-label. @default 'Search tree nodes' */
+    readonly searchAriaLabel: string;
+    /** Builds the search match-count text. @default `${n} match` / `${n} matches` */
+    readonly searchMatchCount: (count: number) => string;
+    /** Search input placeholder. @default 'Search nodes…' */
+    readonly searchPlaceholder: string;
+}
 
 /**
  * Full configuration type for `ApexTree`. An intersection of all sub-option
