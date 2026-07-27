@@ -21,8 +21,16 @@ jobs:
 
       - name: Check commit message and extract version
         id: check
+        env:
+          # Passed as an environment variable, never interpolated into the
+          # script. `${{ }}` is substituted textually before bash parses, so a
+          # commit message containing a double quote breaks the script, and one
+          # containing $(...) or backticks would RUN in this job, which holds the
+          # npm publishing token. Merge commit messages include the PR title,
+          # which any outside contributor controls. This is not theoretical: it
+          # broke a run in apexcharts-js on 2026-07-27.
+          MSG: ${{ github.event.head_commit.message }}
         run: |
-          MSG="${{ github.event.head_commit.message }}"
           if echo "$MSG" | grep -qE '^release: [0-9]+\.[0-9]+\.[0-9]+'; then
             VERSION=$(echo "$MSG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+[^ ]*' | head -1)
             echo "version=$VERSION" >> $GITHUB_OUTPUT
