@@ -46,10 +46,15 @@ jobs:
           fi
           echo "✅ Version $PKG_VERSION confirmed"
 
+      # Must stay recent enough for the npm the next step installs. npm@12
+      # requires node ^22.22.2 || ^24.15.0 || >=26.0.0, so node 20 now fails at
+      # `npm install -g npm@latest` before anything is published.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
+      # npm@latest, not the bundled npm: trusted publishing (OIDC, no token)
+      # needs npm >= 11.5.1.
       - run: npm install -g npm@latest
       - run: npm install
 
