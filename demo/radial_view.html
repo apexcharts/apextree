@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radial Layout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Radial Layout</h2>
+    <p class="subtitle">
+      Root at the centre, each level a ring radiating outward (<code>direction: 'radial'</code>). Click the +/&minus;
+      buttons to collapse a branch and watch the ring re-flow.
+    </p>
+    <div id="svg-tree"></div>
+    <script>
+      // A compact taxonomy: enough breadth per ring to show the radial spread.
+      const child = (id, name, kids) => ({id, name, children: kids ?? []});
+      const data = child('life', 'Life', [
+        child('animals', 'Animals', [
+          child('mammals', 'Mammals', [child('m1', 'Primates'), child('m2', 'Cetaceans'), child('m3', 'Rodents')]),
+          child('birds', 'Birds', [child('b1', 'Raptors'), child('b2', 'Songbirds')]),
+          child('reptiles', 'Reptiles', [child('r1', 'Snakes'), child('r2', 'Lizards'), child('r3', 'Turtles')]),
+        ]),
+        child('plants', 'Plants', [
+          child('flowering', 'Flowering', [child('f1', 'Orchids'), child('f2', 'Grasses')]),
+          child('conifers', 'Conifers', [child('c1', 'Pines'), child('c2', 'Firs')]),
+        ]),
+        child('fungi', 'Fungi', [
+          child('mushrooms', 'Mushrooms', [child('mu1', 'Agarics'), child('mu2', 'Boletes')]),
+          child('molds', 'Molds'),
+        ]),
+        child('protists', 'Protists', [child('algae', 'Algae'), child('amoeba', 'Amoebae')]),
+      ]);
+
+      const options = {
+        // Radial produces a square bounding box, so a square canvas fits it
+        // without letterboxing.
+        width: 760,
+        height: 760,
+        viewPortWidth: 900,
+        viewPortHeight: 900,
+        nodeWidth: 92,
+        nodeHeight: 34,
+        childrenSpacing: 90,
+        siblingSpacing: 26,
+        direction: 'radial',
+        borderRadius: '17px',
+        nodeBGColor: '#EEF2FF',
+        nodeBGColorHover: '#E0E7FF',
+        borderColor: '#C7D2FE',
+        borderColorHover: '#6366F1',
+        edgeColor: '#CBD5E1',
+        edgeWidth: 1.5,
+        fontSize: '12px',
+        fontColor: '#3730A3',
+        enableExpandCollapse: true,
+        enableToolbar: true,
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      tree.render(data);
+    </script>
+  </body>
+</html>

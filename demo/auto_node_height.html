@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auto Node Height</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Auto Node Height</h2>
+    <p class="subtitle">
+      Every card is a fixed <code>nodeWidth</code>, but <code>autoNodeHeight</code> measures each card's content and
+      sizes its height to fit. Cards with more text grow taller instead of clipping; short cards stay compact (down to
+      <code>minHeight</code>). Edges, badges, and collapse/expand all track the measured heights.
+    </p>
+    <div id="svg-tree"></div>
+    <script>
+      // A card whose height depends on how much text it carries: a title plus an
+      // optional, variable-length description. At a fixed width the description
+      // wraps to a different number of lines per node, so each card measures to a
+      // different height.
+      const card = (content) => {
+        const {title, role, note} = content;
+        return `
+          <div style="display:flex;flex-direction:column;gap:4px;height:100%;padding:10px 12px;box-sizing:border-box;">
+            <div style="font-weight:600;font-size:14px;color:#0f172a;">${title}</div>
+            ${role ? `<div style="font-size:12px;color:#5C6BC0;font-weight:500;">${role}</div>` : ''}
+            ${note ? `<div style="font-size:12px;color:#64748b;line-height:1.4;">${note}</div>` : ''}
+          </div>`;
+      };
+
+      const data = {
+        id: 'root',
+        name: 'CEO',
+        data: {title: 'Ada Lovelace', role: 'Chief Executive Officer'},
+        children: [
+          {
+            id: 'eng',
+            name: 'Engineering',
+            data: {
+              title: 'Grace Hopper',
+              role: 'VP Engineering',
+              note: 'Owns platform, applications, and developer experience across three product lines and a shared design system.',
+            },
+            children: [
+              {id: 'eng_a', name: 'Platform', data: {title: 'Platform', role: 'Team'}, children: []},
+              {
+                id: 'eng_b',
+                name: 'Applications',
+                data: {
+                  title: 'Applications',
+                  role: 'Team',
+                  note: 'Web, mobile, and embedded clients plus the public component library.',
+                },
+                children: [],
+              },
+            ],
+          },
+          {
+            id: 'ops',
+            name: 'Operations',
+            data: {title: 'Katherine Johnson', role: 'VP Operations'},
+            children: [
+              {
+                id: 'ops_a',
+                name: 'SRE',
+                data: {
+                  title: 'Site Reliability',
+                  role: 'Team',
+                  note: 'On-call rotation, incident response, capacity planning, and the internal observability stack.',
+                },
+                children: [],
+              },
+              {id: 'ops_b', name: 'IT', data: {title: 'IT', role: 'Team'}, children: []},
+            ],
+          },
+        ],
+      };
+
+      const options = {
+        width: '100%',
+        viewPortWidth: 1000,
+        viewPortHeight: 640,
+        contentKey: 'data',
+        nodeWidth: 210,
+        nodeHeight: 60, // fallback height when there is no DOM to measure in (SSR)
+        autoNodeHeight: {enabled: true, minHeight: 56, maxHeight: 220, extraHeight: 6},
+        childrenSpacing: 70,
+        siblingSpacing: 30,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 1.5,
+        borderRadius: '10px',
+        nodeBGColor: '#f8fafc',
+        borderColor: '#cbd5e1',
+        countBadgeEnabled: true,
+        enableExpandCollapse: true,
+        enableToolbar: true,
+        nodeTemplate: card,
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      tree.render(data);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Data Updates</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="../apextree.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: #f6f7fb;
+        color: #16192c;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 12px 20px;
+        background: #fff;
+        border-bottom: 1px solid #e7e9f2;
+        flex: none;
+      }
+      .titles h1 {
+        font-size: 15px;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .titles p {
+        font-size: 11.5px;
+        color: #767c96;
+        margin: 1px 0 0 0;
+      }
+
+      /* Quarter stepper */
+      .quarters {
+        display: flex;
+        gap: 4px;
+        background: #f1f3f9;
+        padding: 3px;
+        border-radius: 9px;
+      }
+      .quarters button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 14px;
+        border: 0;
+        background: transparent;
+        color: #5b6178;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+      .quarters button.active {
+        background: #fff;
+        color: #3730a3;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+      }
+
+      .diff {
+        font-size: 11.5px;
+        color: #767c96;
+        min-width: 190px;
+        font-variant-numeric: tabular-nums;
+      }
+      .diff b {
+        color: #16a34a;
+      }
+      .diff i {
+        color: #dc2626;
+        font-style: normal;
+      }
+
+      .modes {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 11.5px;
+        color: #767c96;
+      }
+      .modes label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+
+      main {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+      }
+      .stage {
+        position: absolute;
+        inset: 0;
+      }
+      #svg-tree {
+        height: 100%;
+      }
+      .hint {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        font-size: 11.5px;
+        color: #767c96;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid #e7e9f2;
+        border-radius: 999px;
+        padding: 6px 14px;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="titles">
+        <h1>Live Data Updates</h1>
+        <p>Step through quarters: people join, leave, and change manager.</p>
+      </div>
+      <div class="quarters" id="quarters"></div>
+      <div class="diff" id="diff">&nbsp;</div>
+      <div class="modes">
+        <label><input type="radio" name="mode" value="update" checked /> updateData()</label>
+        <label><input type="radio" name="mode" value="render" /> render() rebuild</label>
+      </div>
+    </header>
+    <main>
+      <div class="stage"><div id="svg-tree"></div></div>
+      <span class="hint">Collapse a subtree or select a node, then change quarter: your state survives the update</span>
+    </main>
+    <script>
+      // ── Four quarterly snapshots of one company. Ids are stable across
+      //    quarters, which is what lets a node be recognised and animated
+      //    rather than destroyed and rebuilt.
+      const P = (id, name, role, children) => ({id, name: id, data: {name, role}, children: children ?? []});
+
+      const q1 = P('ceo', 'Alex Rivera', 'CEO', [
+        P('eng', 'Mia Chen', 'VP Engineering', [
+          P('eng-core', 'Leo Torres', 'Core Team Lead', [
+            P('e1', 'Ada Novak', 'Engineer'),
+            P('e2', 'Kai Weber', 'Engineer'),
+          ]),
+        ]),
+        P('sales', 'Ben Haas', 'VP Sales', [P('s1', 'Zoe Frost', 'Account Exec')]),
+      ]);
+
+      const q2 = P('ceo', 'Alex Rivera', 'CEO', [
+        P('eng', 'Mia Chen', 'VP Engineering', [
+          P('eng-core', 'Leo Torres', 'Core Team Lead', [
+            P('e1', 'Ada Novak', 'Engineer'),
+            P('e2', 'Kai Weber', 'Engineer'),
+            P('e3', 'Ivy Ortiz', 'Engineer'),
+          ]),
+          P('eng-data', 'Sam Patel', 'Data Team Lead', [P('d1', 'Nia Adler', 'Data Engineer')]),
+        ]),
+        P('sales', 'Ben Haas', 'VP Sales', [P('s1', 'Zoe Frost', 'Account Exec'), P('s2', 'Tom Kim', 'Account Exec')]),
+      ]);
+
+      // Reorg: the data team moves out from under Engineering and reports to the
+      // CEO. Same node ids, so those nodes travel across the chart.
+      const q3 = P('ceo', 'Alex Rivera', 'CEO', [
+        P('eng', 'Mia Chen', 'VP Engineering', [
+          P('eng-core', 'Leo Torres', 'Core Team Lead', [
+            P('e1', 'Ada Novak', 'Engineer'),
+            P('e3', 'Ivy Ortiz', 'Engineer'),
+            P('e4', 'Jon Rossi', 'Engineer'),
+          ]),
+        ]),
+        P('eng-data', 'Sam Patel', 'Head of Data', [
+          P('d1', 'Nia Adler', 'Data Engineer'),
+          P('d2', 'Eve Lund', 'Analyst'),
+        ]),
+        P('sales', 'Ben Haas', 'VP Sales', [P('s1', 'Zoe Frost', 'Account Exec'), P('s2', 'Tom Kim', 'Account Exec')]),
+      ]);
+
+      const q4 = P('ceo', 'Alex Rivera', 'CEO', [
+        P('eng', 'Mia Chen', 'VP Engineering', [
+          P('eng-core', 'Leo Torres', 'Core Team Lead', [
+            P('e1', 'Ada Novak', 'Staff Engineer'),
+            P('e3', 'Ivy Ortiz', 'Engineer'),
+            P('e4', 'Jon Rossi', 'Engineer'),
+          ]),
+          P('eng-plat', 'Ola Frost', 'Platform Lead', [P('p1', 'Max Haas', 'Engineer')]),
+        ]),
+        P('eng-data', 'Sam Patel', 'Head of Data', [
+          P('d1', 'Nia Adler', 'Data Engineer'),
+          P('d2', 'Eve Lund', 'Analyst'),
+          P('d3', 'Ravi Kim', 'Analyst'),
+        ]),
+        P('sales', 'Ben Haas', 'VP Sales', [P('s1', 'Zoe Frost', 'Account Exec')]),
+      ]);
+
+      const snapshots = [
+        {label: 'Q1', data: q1},
+        {label: 'Q2', data: q2},
+        {label: 'Q3', data: q3},
+        {label: 'Q4', data: q4},
+      ];
+
+      const idsOf = (node, acc = new Set()) => {
+        acc.add(node.id);
+        (node.children || []).forEach((c) => idsOf(c, acc));
+        return acc;
+      };
+
+      function nodeTemplate(d) {
+        return `<div style="display:flex;flex-direction:column;justify-content:center;height:100%;padding:8px 12px;overflow:hidden;">
+          <div style="font-weight:700;font-size:13px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+          <div style="font-size:11px;color:#5b6178;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.role}</div>
+        </div>`;
+      }
+
+      const options = {
+        width: '100%',
+        height: '100%',
+        viewPortWidth: 1400,
+        viewPortHeight: 780,
+        contentKey: 'data',
+        nodeTemplate,
+        nodeWidth: 160,
+        nodeHeight: 54,
+        borderRadius: '9px',
+        childrenSpacing: 68,
+        siblingSpacing: 22,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 1.5,
+        enableToolbar: true,
+        enableSelection: 'multi',
+        canvasStyle: 'background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f2f3f9 100%);',
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      const graph = tree.render(snapshots[0].data);
+
+      let current = 0;
+      const quartersEl = document.getElementById('quarters');
+      const diffEl = document.getElementById('diff');
+      const modeOf = () => document.querySelector('input[name="mode"]:checked').value;
+
+      snapshots.forEach((snap, i) => {
+        const b = document.createElement('button');
+        b.textContent = snap.label;
+        b.className = i === 0 ? 'active' : '';
+        b.addEventListener('click', () => goTo(i));
+        quartersEl.appendChild(b);
+      });
+
+      function goTo(i) {
+        if (i === current) return;
+        const before = idsOf(snapshots[current].data);
+        const after = idsOf(snapshots[i].data);
+        const joined = [...after].filter((id) => !before.has(id)).length;
+        const left = [...before].filter((id) => !after.has(id)).length;
+
+        current = i;
+        [...quartersEl.children].forEach((el, n) => el.classList.toggle('active', n === i));
+        diffEl.innerHTML = `<b>+${joined} joined</b> &middot; <i>${left} left</i>`;
+
+        // The whole point of the demo: same data change, two code paths.
+        if (modeOf() === 'update') {
+          graph.updateData(snapshots[i].data);
+        } else {
+          tree.render(snapshots[i].data);
+        }
+      }
+    </script>
+  </body>
+</html>

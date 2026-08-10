@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ApexTree — Count Badges Demo</title>
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f0f2f5;
+        margin: 0 auto;
+        padding: 20px;
+        max-width: 1200px;
+      }
+      h1 {
+        font-size: 1.4rem;
+        color: #333;
+        margin-bottom: 4px;
+      }
+      p.desc {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+      }
+      .demo-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 24px;
+      }
+      .demo-card h2 {
+        font-size: 1.05rem;
+        color: #444;
+        margin: 0 0 4px;
+      }
+      .demo-card .hint {
+        font-size: 0.82rem;
+        color: #6e6e6e;
+        margin: 0 0 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ApexTree — Count Badges</h1>
+    <p class="desc">
+      An always-visible pill in the <strong>top-right corner</strong> of every node showing a number — a descendant
+      count, a direct-child count, or any per-node metric you supply. Enable with
+      <code>countBadgeEnabled: true</code> and pick the number via <code>countBadgeSource</code>.
+    </p>
+
+    <!-- Direct children — matches the classic concept (12 / 8 / 6 …) -->
+    <div class="demo-card">
+      <h2>countBadgeSource: 'children'</h2>
+      <p class="hint">Each department shows how many direct children it has. Root and leaves show none.</p>
+      <div id="tree-children"></div>
+    </div>
+
+    <!-- Total descendants -->
+    <div class="demo-card">
+      <h2>countBadgeSource: 'descendants' (default)</h2>
+      <p class="hint">Every node shows its total descendant count across all levels.</p>
+      <div id="tree-descendants"></div>
+    </div>
+
+    <!-- Data-driven metric -->
+    <div class="demo-card">
+      <h2>countBadgeSource: 'data' (head-count)</h2>
+      <p class="hint">Reads a per-node <code>count</code> field — any metric, not a structural count.</p>
+      <div id="tree-data"></div>
+    </div>
+
+    <!-- Custom colors + threshold -->
+    <div class="demo-card">
+      <h2>Custom colors + threshold: 2</h2>
+      <p class="hint">Emerald badge; hidden on nodes with fewer than 2 descendants.</p>
+      <div id="tree-styled"></div>
+    </div>
+
+    <!-- RTL — Arabic labels, badge mirrors to the top-left corner -->
+    <div class="demo-card">
+      <h2>RTL — Arabic (locale.direction: 'rtl')</h2>
+      <p class="hint">
+        Arabic labels with <code>locale.direction: 'rtl'</code>. The tree mirrors right-to-left and each badge moves to
+        the node's top-left corner.
+      </p>
+      <div id="tree-rtl"></div>
+    </div>
+
+    <script>
+      // ── shared org data (mirrors the concept: Company → 3 depts → leaves) ──
+      const data = {
+        id: 'company',
+        name: 'Company',
+        options: {nodeBGColor: '#4f7bf0', nodeBGColorHover: '#4f7bf0', borderColor: '#4f7bf0'},
+        count: 26,
+        children: [
+          {
+            id: 'product',
+            name: 'Product',
+            count: 12,
+            children: [
+              {id: 'web', name: 'Web', count: 5},
+              {id: 'mobile', name: 'Mobile', count: 7},
+            ],
+          },
+          {
+            id: 'design',
+            name: 'Design',
+            count: 8,
+            children: [
+              {id: 'brand', name: 'Brand', count: 3},
+              {id: 'ux', name: 'UX', count: 5},
+            ],
+          },
+          {
+            id: 'growth',
+            name: 'Growth',
+            count: 6,
+            children: [
+              {id: 'seo', name: 'SEO', count: 2},
+              {id: 'ads', name: 'Ads', count: 4},
+            ],
+          },
+        ],
+      };
+
+      // ── same tree, Arabic labels (for the RTL demo) ────────────────────────
+      const arData = {
+        id: 'company',
+        name: 'الشركة',
+        options: {nodeBGColor: '#4f7bf0', nodeBGColorHover: '#4f7bf0', borderColor: '#4f7bf0'},
+        count: 26,
+        children: [
+          {
+            id: 'product',
+            name: 'المنتجات',
+            count: 12,
+            children: [
+              {id: 'web', name: 'ويب', count: 5},
+              {id: 'mobile', name: 'موبايل', count: 7},
+            ],
+          },
+          {
+            id: 'design',
+            name: 'التصميم',
+            count: 8,
+            children: [
+              {id: 'brand', name: 'العلامة', count: 3},
+              {id: 'ux', name: 'التجربة', count: 5},
+            ],
+          },
+          {
+            id: 'growth',
+            name: 'النمو',
+            count: 6,
+            children: [
+              {id: 'seo', name: 'سيو', count: 2},
+              {id: 'ads', name: 'إعلانات', count: 4},
+            ],
+          },
+        ],
+      };
+
+      const sharedOpts = {
+        nodeWidth: 140,
+        nodeHeight: 48,
+        childrenSpacing: 64,
+        siblingSpacing: 36,
+        paddingX: 40,
+        paddingY: 30,
+        borderRadius: '10px',
+        canvasStyle: 'border: 1px solid #ddd; border-radius: 4px;',
+        fontColor: '#1f2937',
+        fontSize: '15px',
+        width: '100%',
+        height: 320,
+        countBadgeEnabled: true,
+      };
+
+      // ── 1. Direct-children count ───────────────────────────────────────────
+      new ApexTree(document.getElementById('tree-children'), {
+        ...sharedOpts,
+        countBadgeSource: 'children',
+      }).render(data);
+
+      // ── 2. Total descendants (default) ─────────────────────────────────────
+      new ApexTree(document.getElementById('tree-descendants'), {
+        ...sharedOpts,
+        countBadgeSource: 'descendants',
+      }).render(data);
+
+      // ── 3. Data-driven metric ──────────────────────────────────────────────
+      new ApexTree(document.getElementById('tree-data'), {
+        ...sharedOpts,
+        countBadgeSource: 'data',
+        countBadgeDataKey: 'count',
+      }).render(data);
+
+      // ── 4. Custom colors + threshold ───────────────────────────────────────
+      new ApexTree(document.getElementById('tree-styled'), {
+        ...sharedOpts,
+        countBadgeSource: 'descendants',
+        countBadgeThreshold: 2,
+        countBadgeBGColor: '#059669',
+        countBadgeFontColor: '#ffffff',
+        countBadgeFontSize: '11px',
+      }).render(data);
+
+      // ── 5. RTL (Arabic) — badge mirrors to the top-left corner ─────────────
+      new ApexTree(document.getElementById('tree-rtl'), {
+        ...sharedOpts,
+        countBadgeSource: 'data',
+        countBadgeDataKey: 'count',
+        locale: {direction: 'rtl'},
+      }).render(arData);
+    </script>
+  </body>
+</html>

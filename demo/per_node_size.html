@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Per-node Size</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Per-node Size</h2>
+    <p class="subtitle">
+      Individual nodes can override the global <code>nodeWidth</code> / <code>nodeHeight</code> via
+      <code>node.options</code>. Edges, the expand/collapse button, badges, and collapse/expand animation all track each
+      node's own size. (Cartesian directions; grouped leaves and radial stay uniform for now.)
+    </p>
+    <div id="svg-tree"></div>
+    <script>
+      const card = (content) =>
+        `<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:0 10px;text-align:center;box-sizing:border-box;">${content}</div>`;
+
+      const data = {
+        id: 'root',
+        name: 'Board of Directors',
+        // A deliberately large root card.
+        options: {nodeWidth: 220, nodeHeight: 84},
+        children: [
+          {
+            id: 'eng',
+            name: 'Engineering',
+            options: {nodeWidth: 180, nodeHeight: 64},
+            children: [
+              {id: 'eng_a', name: 'Platform', children: []},
+              {id: 'eng_b', name: 'Applications', children: []},
+            ],
+          },
+          {
+            id: 'ops',
+            name: 'Operations & Infrastructure Group',
+            // Wide + tall to fit the long label.
+            options: {nodeWidth: 240, nodeHeight: 72},
+            children: [
+              {id: 'ops_a', name: 'SRE', children: []},
+              {id: 'ops_b', name: 'IT', children: []},
+            ],
+          },
+          {
+            id: 'sales',
+            name: 'Sales',
+            children: [
+              {id: 'sales_a', name: 'EMEA', children: []},
+              {id: 'sales_b', name: 'AMER', children: []},
+            ],
+          },
+        ],
+      };
+
+      const options = {
+        width: '100%',
+        viewPortWidth: 1000,
+        viewPortHeight: 620,
+        nodeWidth: 120,
+        nodeHeight: 48,
+        childrenSpacing: 70,
+        siblingSpacing: 26,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 1.5,
+        borderRadius: '10px',
+        nodeBGColor: '#f8fafc',
+        borderColor: '#cbd5e1',
+        countBadgeEnabled: true,
+        enableExpandCollapse: true,
+        enableToolbar: true,
+        nodeTemplate: card,
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      tree.render(data);
+    </script>
+  </body>
+</html>

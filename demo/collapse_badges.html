@@ -51,22 +51,23 @@
   <body>
     <h1>ApexTree — Collapse Badges</h1>
     <p class="desc">
-      When a node is collapsed the expand/collapse button shows a <strong>+N</strong> badge indicating the total number
-      of hidden descendants. The badge disappears when the node is expanded again.
+      When a node is collapsed the expand/collapse button itself shows the total number of hidden descendants: it widens
+      into a pill and swaps its <strong>+</strong> glyph for the count. The button returns to a plain
+      <strong>&minus;</strong> circle when the node is expanded again.
     </p>
 
     <div class="demo-row">
       <!-- Main showcase: pre-collapsed, badge visible on load -->
       <div class="demo-card">
-        <h2>Default badge (top direction)</h2>
+        <h2>Default count (top direction)</h2>
         <p class="hint">Bob and Jane are pre-collapsed — click their buttons to toggle.</p>
         <div id="tree-top"></div>
       </div>
 
       <!-- Left direction: pre-collapsed -->
       <div class="demo-card">
-        <h2>Left direction + custom badge colors</h2>
-        <p class="hint">Custom green badge. Click to expand/collapse.</p>
+        <h2>Left direction + custom count colors</h2>
+        <p class="hint">Custom green count pill. Click to expand/collapse.</p>
         <div id="tree-left"></div>
       </div>
     </div>
@@ -75,14 +76,14 @@
       <!-- Threshold demo: pre-collapsed but badge only for ≥ 3 -->
       <div class="demo-card">
         <h2>collapseBadgeThreshold: 3</h2>
-        <p class="hint">Badge only shown when ≥ 3 nodes hidden. Bob (+5) shows; Jane (+2) does not.</p>
+        <p class="hint">Count only shown when ≥ 3 nodes hidden. Bob (5) shows; Jane keeps a plain +.</p>
         <div id="tree-threshold"></div>
       </div>
 
       <!-- Badge disabled -->
       <div class="demo-card">
         <h2>collapseBadgeEnabled: false</h2>
-        <p class="hint">No badge rendered even when collapsed.</p>
+        <p class="hint">Plain + glyph even when collapsed, no count.</p>
         <div id="tree-disabled"></div>
       </div>
     </div>
@@ -91,7 +92,9 @@
       <!-- CSS var theming -->
       <div class="demo-card">
         <h2>CSS custom property theming</h2>
-        <p class="hint">Red badge via <code>--apex-tree-badge-bg</code> and <code>--apex-tree-badge-color</code>.</p>
+        <p class="hint">
+          Red count pill via <code>--apex-tree-badge-bg</code> and <code>--apex-tree-badge-color</code>.
+        </p>
         <div
           id="tree-css"
           style="--apex-tree-badge-bg: #e53935; --apex-tree-badge-color: #fff; --apex-tree-badge-font-size: 11px"
@@ -101,7 +104,7 @@
       <!-- Right direction -->
       <div class="demo-card">
         <h2>Right direction</h2>
-        <p class="hint">Badge appears to the left of the collapse button.</p>
+        <p class="hint">The count rides in the button, which sits on the node's right edge.</p>
         <div id="tree-right"></div>
       </div>
     </div>

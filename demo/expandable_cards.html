@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expandable Cards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 12px;
+      }
+      .bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      button {
+        font: inherit;
+        font-size: 13px;
+        padding: 6px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #1a1a2e;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: #5c6bc0;
+        color: #5c6bc0;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Expandable Cards</h2>
+    <p class="subtitle">
+      Each card carries a summary plus a detail section (stats, a progress meter, tags, and action links). Click the
+      <code>▸</code> chevron on a card to expand it in place: the card re-measures via <code>autoNodeHeight</code> and
+      the tree springs to fit. State survives collapse/expand of children.
+    </p>
+    <div class="bar">
+      <button id="btn-expand-all">Expand all</button>
+      <button id="btn-collapse-all">Collapse all</button>
+    </div>
+    <div id="svg-tree"></div>
+    <script>
+      const data = {
+        id: 'root',
+        name: 'Ada Lovelace',
+        data: {
+          name: 'Ada Lovelace',
+          title: 'Chief Executive Officer',
+          accentColor: '#6366f1',
+          tags: ['board', 'founder'],
+          stats: [
+            {label: 'Tenure', value: '8 yrs'},
+            {label: 'Reports', value: '240'},
+          ],
+          progress: {value: 78, label: 'Company goals'},
+          actions: [{label: 'Open profile', href: '#'}],
+        },
+        children: [
+          {
+            id: 'eng',
+            name: 'Grace Hopper',
+            data: {
+              name: 'Grace Hopper',
+              title: 'VP Engineering',
+              accentColor: '#0ea5e9',
+              tags: ['platform', 'apps'],
+              stats: [
+                {label: 'Teams', value: '2'},
+                {label: 'Headcount', value: '96'},
+              ],
+              progress: {value: 62, label: 'Roadmap', color: '#0ea5e9'},
+              details: 'Owns platform, applications, and developer experience.',
+              actions: [{label: 'Team page', href: '#'}],
+            },
+            children: [
+              {id: 'eng_a', name: 'Platform', data: {name: 'Platform', title: 'Team'}, children: []},
+              {id: 'eng_b', name: 'Applications', data: {name: 'Applications', title: 'Team'}, children: []},
+            ],
+          },
+          {
+            id: 'ops',
+            name: 'Katherine Johnson',
+            data: {
+              name: 'Katherine Johnson',
+              title: 'VP Operations',
+              accentColor: '#f59e0b',
+              tags: ['sre', 'it'],
+              stats: [
+                {label: 'Teams', value: '2'},
+                {label: 'Uptime', value: '99.98%'},
+              ],
+              progress: {value: 91, label: 'SLA', color: '#22c55e'},
+            },
+            children: [
+              {id: 'ops_a', name: 'SRE', data: {name: 'SRE', title: 'Team'}, children: []},
+              {id: 'ops_b', name: 'IT', data: {name: 'IT', title: 'Team'}, children: []},
+            ],
+          },
+        ],
+      };
+
+      const options = {
+        width: '100%',
+        viewPortWidth: 1000,
+        viewPortHeight: 680,
+        contentKey: 'data',
+        nodeWidth: 210,
+        nodeHeight: 64, // fallback (SSR); autoNodeHeight measures the real height
+        autoNodeHeight: {enabled: true, minHeight: 60, extraHeight: 6},
+        cardExpansion: {clickToExpand: false},
+        childrenSpacing: 70,
+        siblingSpacing: 34,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 1.5,
+        borderRadius: '10px',
+        nodeBGColor: '#ffffff',
+        borderColor: '#e2e8f0',
+        enableExpandCollapse: true,
+        enableToolbar: true,
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      const graph = tree.render(data);
+
+      const branchIds = ['root', 'eng', 'ops'];
+      document.getElementById('btn-expand-all').addEventListener('click', () => graph.setExpandedCards(branchIds));
+      document.getElementById('btn-collapse-all').addEventListener('click', () => graph.setExpandedCards([]));
+    </script>
+  </body>
+</html>

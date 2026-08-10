@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Node Wrappers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 16px;
+      }
+      /* Styling hooks stamped by nodeWrapper onto the node <g> — target the
+         card via the foreignObject child, the way search-match styling does. */
+      g[data-dept='engineering'] foreignObject > div:first-child {
+        box-shadow: 0 0 0 2px #6366f1 !important;
+      }
+      g[data-dept='sales'] foreignObject > div:first-child {
+        box-shadow: 0 0 0 2px #10b981 !important;
+      }
+      g[data-dept='marketing'] foreignObject > div:first-child {
+        box-shadow: 0 0 0 2px #f59e0b !important;
+      }
+      g.has-children {
+        cursor: context-menu;
+      }
+      /* Simple right-click menu */
+      #menu {
+        position: fixed;
+        z-index: 999;
+        min-width: 150px;
+        background: #fff;
+        border: 1px solid #e4e7ec;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(16, 24, 40, 0.16);
+        padding: 4px;
+        font-size: 13px;
+        display: none;
+      }
+      #menu button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: none;
+        padding: 6px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        font: inherit;
+        color: #344054;
+      }
+      #menu button:hover {
+        background: #f2f4f7;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Node Wrappers</h2>
+    <p class="subtitle">
+      <code>nodeWrapper</code> stamps classes and <code>data-*</code> attributes onto each node's <code>&lt;g&gt;</code>
+      (outside the card), so you can style branches by department and wire a single delegated right-click menu.
+      <strong>Right-click any node.</strong>
+    </p>
+    <div id="svg-tree"></div>
+    <div id="menu">
+      <button data-action="focus">Focus subtree</button>
+      <button data-action="collapse">Collapse</button>
+      <button data-action="log">Log node id</button>
+    </div>
+    <script>
+      const data = {
+        id: 'ceo',
+        name: 'Alex Rivera (CEO)',
+        children: [
+          {
+            id: 'engineering',
+            name: 'Sam Chen (VP Eng)',
+            children: [
+              {id: 'platform', name: 'Mia Torres'},
+              {id: 'frontend', name: 'Leo Haas'},
+            ],
+          },
+          {
+            id: 'sales',
+            name: 'Dana Wolfe (VP Sales)',
+            children: [
+              {id: 'sales_1', name: 'Ben Ortiz'},
+              {id: 'sales_2', name: 'Zoe Adler'},
+            ],
+          },
+          {
+            id: 'marketing',
+            name: 'Iris Novak (VP Marketing)',
+            children: [
+              {id: 'marketing_1', name: 'Tia Rossi'},
+              {id: 'marketing_2', name: 'Kai Weber'},
+            ],
+          },
+        ],
+      };
+
+      // Map each node to its top-level department for the branch coloring.
+      const deptOf = {
+        engineering: 'engineering',
+        platform: 'engineering',
+        frontend: 'engineering',
+        sales: 'sales',
+        sales_1: 'sales',
+        sales_2: 'sales',
+        marketing: 'marketing',
+        marketing_1: 'marketing',
+        marketing_2: 'marketing',
+      };
+
+      const options = {
+        width: '100%',
+        viewPortWidth: 1000,
+        viewPortHeight: 560,
+        nodeWidth: 150,
+        nodeHeight: 46,
+        childrenSpacing: 70,
+        siblingSpacing: 24,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 2,
+        enableToolbar: true,
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+        // The wrapper hook: a styling class + a data-* attribute per node.
+        nodeWrapper: ({id, hasChildren}) => ({
+          className: hasChildren ? 'has-children' : '',
+          attributes: {'data-dept': deptOf[id] ?? '', 'data-menu-id': id},
+        }),
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      const graph = tree.render(data);
+
+      // ONE delegated right-click listener reads the data-menu-id we stamped.
+      const menu = document.getElementById('menu');
+      let menuTarget = null;
+
+      document.getElementById('svg-tree').addEventListener('contextmenu', (e) => {
+        const g = e.target.closest('[data-menu-id]');
+        if (!g) return;
+        e.preventDefault();
+        menuTarget = g.getAttribute('data-menu-id');
+        menu.style.left = e.clientX + 'px';
+        menu.style.top = e.clientY + 'px';
+        menu.style.display = 'block';
+      });
+
+      document.addEventListener('click', () => (menu.style.display = 'none'));
+
+      menu.addEventListener('click', (e) => {
+        const action = e.target.getAttribute('data-action');
+        if (!action || !menuTarget) return;
+        if (action === 'focus') graph.focus(menuTarget);
+        else if (action === 'collapse') graph.collapse(menuTarget);
+        else if (action === 'log') console.log('node:', menuTarget);
+      });
+    </script>
+  </body>
+</html>

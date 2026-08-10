@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Semantic Zoom (Level of Detail)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="../apextree.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: #f6f7fb;
+        color: #16192c;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* ── Top bar ─────────────────────────────────────────────────────────── */
+      header {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 12px 20px;
+        background: #ffffff;
+        border-bottom: 1px solid #e7e9f2;
+        flex: none;
+      }
+      .titles h1 {
+        font-size: 15px;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .titles p {
+        font-size: 11.5px;
+        color: #767c96;
+        margin: 1px 0 0 0;
+      }
+
+      /* Tier stepper: which level of detail is on screen right now. */
+      .tiers {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+      }
+      .tier {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #9aa0b5;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        transition:
+          color 160ms ease,
+          background 160ms ease,
+          border-color 160ms ease;
+      }
+      .tier .swatch {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #cfd3e0;
+        transition: background 160ms ease;
+      }
+      .tier.active {
+        color: #3730a3;
+        background: #eef2ff;
+        border-color: #c7d2fe;
+      }
+      .tier.active .swatch {
+        background: #6366f1;
+      }
+      .tier-arrow {
+        color: #c3c8d9;
+        font-size: 11px;
+      }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+      }
+      .controls button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 7px 14px;
+        border-radius: 8px;
+        border: 1px solid #e2e5f0;
+        background: #fff;
+        color: #3d4260;
+        cursor: pointer;
+        transition:
+          border-color 140ms ease,
+          color 140ms ease,
+          box-shadow 140ms ease;
+      }
+      .controls button:hover {
+        border-color: #6366f1;
+        color: #4338ca;
+        box-shadow: 0 1px 4px rgba(99, 102, 241, 0.18);
+      }
+
+      /* ── Legend ──────────────────────────────────────────────────────────── */
+      .legend {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font-size: 11px;
+        color: #767c96;
+      }
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .legend i {
+        width: 9px;
+        height: 9px;
+        border-radius: 3px;
+      }
+
+      /* ── Stage ───────────────────────────────────────────────────────────── */
+      main {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+      }
+      /* ApexTree writes inline width/position on its container, so the stage
+         wrapper owns the geometry and the container just fills it. */
+      .stage {
+        position: absolute;
+        inset: 0;
+      }
+      #svg-tree {
+        height: 100%;
+      }
+      .hint {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        font-size: 11.5px;
+        color: #767c96;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid #e7e9f2;
+        border-radius: 999px;
+        padding: 6px 14px;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="titles">
+        <h1>Semantic Zoom</h1>
+        <p>One fixed layout. Zoom only changes how much detail each node shows.</p>
+      </div>
+      <div class="legend" aria-hidden="true">
+        <span><i style="background: #16a34a"></i>Present</span>
+        <span><i style="background: #dc2626"></i>Busy</span>
+        <span><i style="background: #7c3aed"></i>Travel</span>
+        <span><i style="background: #94a3b8"></i>Away</span>
+      </div>
+      <div class="tiers" aria-label="Current level of detail">
+        <span class="tier" data-tier="dot"><span class="swatch"></span>Overview</span>
+        <span class="tier-arrow">&#8594;</span>
+        <span class="tier" data-tier="compact"><span class="swatch"></span>Name &amp; role</span>
+        <span class="tier-arrow">&#8594;</span>
+        <span class="tier" data-tier="full"><span class="swatch"></span>Details</span>
+      </div>
+      <div class="controls">
+        <button id="zoom-out">&#8722; Zoom out</button>
+        <button id="zoom-in">&#43; Zoom in</button>
+        <button id="fit">Fit</button>
+      </div>
+    </header>
+    <main>
+      <div class="stage"><div id="svg-tree"></div></div>
+      <span class="hint">Cmd/Ctrl + scroll to zoom &middot; drag to pan &middot; detail follows your zoom</span>
+    </main>
+    <script>
+      // ── A 75-person company with realistic, uneven depth (2 to 6 levels) and
+      //    team sizes from 1 to 12, so the layout has real shape. All names are
+      //    generated. Status drives the overview color, like a presence board.
+      const STATUS = ['present', 'present', 'busy', 'present', 'travel', 'present', 'unavailable', 'present'];
+      const STATUS_COLOR = {present: '#16a34a', busy: '#dc2626', travel: '#7c3aed', unavailable: '#94a3b8'};
+      const UNIT_COLOR = {
+        Executive: '#4338ca',
+        Production: '#0f766e',
+        Sales: '#0ea472',
+        Engineering: '#2563eb',
+        Accounting: '#b45309',
+      };
+      const firsts = [
+        'Ada',
+        'Leo',
+        'Mia',
+        'Kai',
+        'Zoe',
+        'Ben',
+        'Ivy',
+        'Sam',
+        'Nia',
+        'Ravi',
+        'Ola',
+        'Tom',
+        'Eve',
+        'Jon',
+        'Ana',
+        'Max',
+      ];
+      const lasts = [
+        'Chen',
+        'Torres',
+        'Haas',
+        'Novak',
+        'Adler',
+        'Ortiz',
+        'Kim',
+        'Rossi',
+        'Weber',
+        'Patel',
+        'Frost',
+        'Lund',
+      ];
+
+      let seq = 0;
+      function person(position, unit, children) {
+        seq++;
+        const name = `${firsts[(seq * 5) % firsts.length]} ${lasts[(seq * 7) % lasts.length]}`;
+        const status = STATUS[seq % STATUS.length];
+        return {
+          id: `p${seq}`,
+          name: `p${seq}`,
+          data: {
+            name,
+            position,
+            unit,
+            status,
+            email: `${name.toLowerCase().replace(' ', '.')}@northwind.dev`,
+            phone: `555-01${String(seq).padStart(2, '0')}`,
+          },
+          children: children ?? [],
+        };
+      }
+      const many = (count, position, unit) => Array.from({length: count}, () => person(position, unit));
+
+      const data = {
+        ...person('Chief Executive Officer', 'Executive', [
+          person('Chief Executive Assistant', 'Executive', [
+            person('Senior Executive Assistant', 'Executive'),
+            person('Junior Executive Assistant', 'Executive'),
+          ]),
+          person('VP of Production', 'Production', [
+            person('Quality Assurance Manager', 'Production', [
+              person('QA Supervisor', 'Production', [person('QA Technician', 'Production')]),
+              person('Document Control Manager', 'Production', [
+                person('Control Specialist', 'Production'),
+                person('Document Control Assistant', 'Production'),
+              ]),
+            ]),
+            person('Master Scheduler', 'Production'),
+            person('Facilities Manager', 'Production', [
+              person('Facilities Administrator', 'Production', [
+                person('Maintenance Supervisor', 'Production'),
+                person('Caretaker', 'Production'),
+              ]),
+            ]),
+            person('Shipping Supervisor', 'Production', [
+              person('Shipping Clerk', 'Production'),
+              person('Stocker', 'Production'),
+            ]),
+            person('Production Supervisor', 'Production'),
+          ]),
+          person('VP of Sales', 'Sales', [
+            person('NA Sales Manager', 'Sales', many(7, 'Sales Representative', 'Sales')),
+            person('EU Sales Manager', 'Sales', many(8, 'Sales Representative', 'Sales')),
+          ]),
+          person('VP of Engineering', 'Engineering', [
+            person('Engineering Manager', 'Engineering', [
+              person('Senior Tool Designer', 'Engineering', many(6, 'Tool Designer', 'Engineering')),
+              person('Senior Design Engineer', 'Engineering', many(5, 'Design Engineer', 'Engineering')),
+              person('R&D Manager', 'Engineering', many(12, 'R&D Engineer', 'Engineering')),
+            ]),
+          ]),
+          person('Chief Financial Officer', 'Accounting', [
+            person('Accounts Manager', 'Accounting', many(9, 'Accountant', 'Accounting')),
+            person('Finance Manager', 'Accounting', many(6, 'Financial Controller', 'Accounting')),
+            person('HR Manager', 'Accounting', many(3, 'HR Specialist', 'Accounting')),
+          ]),
+        ]),
+        id: 'ceo',
+        name: 'ceo',
+      };
+
+      // ── One node size, three renderings. The box never changes; zooming only
+      //    swaps how much of the data is exposed inside it (yFiles-style).
+      const initials = (name) =>
+        name
+          .split(' ')
+          .map((w) => w[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase();
+
+      let currentTier = 'full';
+
+      function nodeTemplate(d, ctx) {
+        const lod = (ctx && ctx.lod) || 'full';
+        currentTier = lod;
+        const sc = STATUS_COLOR[d.status];
+        const uc = UNIT_COLOR[d.unit];
+
+        // Overview: the whole box is a status-colored slab with the name.
+        if (lod === 'dot') {
+          return `<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:6% 8%;background:${sc};overflow:hidden;">
+            <span style="color:#fff;font-weight:700;font-size:26px;line-height:1.15;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</span>
+          </div>`;
+        }
+
+        // Name & role: a plate with a status stripe, name and position.
+        if (lod === 'compact') {
+          return `<div style="display:flex;height:100%;overflow:hidden;">
+            <span style="flex:none;width:10px;background:${sc};"></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:8px 16px;">
+              <div style="font-weight:700;font-size:21px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+              <div style="font-size:14.5px;color:#5b6178;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.position}</div>
+            </div>
+          </div>`;
+        }
+
+        // Details: the complete card with avatar, role, contact, unit and status.
+        return `<div style="display:flex;flex-direction:column;justify-content:center;gap:6px;height:100%;padding:12px 14px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <span style="flex-shrink:0;width:38px;height:38px;border-radius:50%;background:${uc};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">${initials(d.name)}</span>
+            <div style="min-width:0;">
+              <div style="font-weight:700;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+              <div style="font-size:11px;color:#5b6178;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.position}</div>
+            </div>
+          </div>
+          <div style="font-size:10.5px;color:#8a90a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.email} &middot; ${d.phone}</div>
+          <div style="display:flex;gap:6px;overflow:hidden;">
+            <span style="font-size:9.5px;font-weight:600;color:${uc};background:${uc}1a;padding:2px 8px;border-radius:999px;white-space:nowrap;">${d.unit}</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:#5b6178;background:#f1f3f9;padding:2px 8px;border-radius:999px;white-space:nowrap;"><i style="width:7px;height:7px;border-radius:50%;background:${sc};"></i>${d.status}</span>
+          </div>
+        </div>`;
+      }
+
+      const options = {
+        width: '100%',
+        height: '100%',
+        viewPortWidth: 1500,
+        viewPortHeight: 900,
+        contentKey: 'data',
+        nodeTemplate,
+        nodeWidth: 240,
+        nodeHeight: 120,
+        borderRadius: '10px',
+        childrenSpacing: 70,
+        siblingSpacing: 24,
+        groupLeafNodes: true,
+        groupLeafNodesSpacing: 16,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 1.5,
+        enableToolbar: true,
+        semanticZoom: {enabled: true, compactBelow: 170, dotBelow: 100},
+        canvasStyle: 'background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f2f3f9 100%);',
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      const graph = tree.render(data);
+
+      document.getElementById('zoom-in').addEventListener('click', () => graph.zoom(0.2));
+      document.getElementById('zoom-out').addEventListener('click', () => graph.zoom(-0.2));
+      document.getElementById('fit').addEventListener('click', () => graph.fitScreen());
+
+      // Reflect the active tier in the header stepper.
+      setInterval(() => {
+        document.querySelectorAll('.tier').forEach((el) => {
+          el.classList.toggle('active', el.getAttribute('data-tier') === currentTier);
+        });
+      }, 250);
+    </script>
+  </body>
+</html>

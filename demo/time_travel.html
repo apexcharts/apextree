@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time Travel: Scrub Through Org History</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="../apextree.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: #f6f7fb;
+        color: #16192c;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* ── Top bar ─────────────────────────────────────────────────────────── */
+      header {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 12px 20px;
+        background: #ffffff;
+        border-bottom: 1px solid #e7e9f2;
+        flex: none;
+      }
+      .titles h1 {
+        font-size: 15px;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .titles p {
+        font-size: 11.5px;
+        color: #767c96;
+        margin: 1px 0 0 0;
+      }
+
+      .play {
+        font: inherit;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 7px 15px 7px 12px;
+        border-radius: 999px;
+        border: 1px solid #c7d2fe;
+        background: #eef2ff;
+        color: #3730a3;
+        cursor: pointer;
+        transition:
+          background 140ms ease,
+          border-color 140ms ease;
+      }
+      .play:hover {
+        background: #e0e7ff;
+        border-color: #a5b4fc;
+      }
+      .play .glyph {
+        font-size: 10px;
+        line-height: 1;
+      }
+
+      /* Readouts sit right of the play control, on a tabular baseline so the
+         numbers do not jitter as the org grows. */
+      .readout {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        font-variant-numeric: tabular-nums;
+      }
+      .readout .period {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .readout .count {
+        font-size: 11.5px;
+        color: #767c96;
+      }
+
+      .changes {
+        display: flex;
+        gap: 6px;
+        margin-left: auto;
+      }
+      .chip {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .chip.joined {
+        color: #15803d;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+      }
+      .chip.left {
+        color: #b91c1c;
+        background: #fef2f2;
+        border-color: #fecaca;
+      }
+      .chip.moved {
+        color: #a16207;
+        background: #fefce8;
+        border-color: #fde68a;
+      }
+      .chip.hidden {
+        display: none;
+      }
+
+      /* ── Stage ───────────────────────────────────────────────────────────── */
+      main {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+      }
+      /* ApexTree writes inline width/position on its container, so the stage
+         wrapper owns the geometry and the container just fills it. */
+      .stage {
+        position: absolute;
+        inset: 0;
+      }
+      #svg-tree {
+        height: 100%;
+      }
+
+      /* ── Scrubber ────────────────────────────────────────────────────────── */
+      footer {
+        flex: none;
+        background: #fff;
+        border-top: 1px solid #e7e9f2;
+        padding: 12px 28px 10px 28px;
+      }
+      .note {
+        font-size: 12px;
+        color: #4a5069;
+        min-height: 17px;
+        margin-bottom: 8px;
+      }
+      .note b {
+        color: #16192c;
+        font-weight: 600;
+      }
+
+      /* The track is a headcount area chart, so the scrub position also reads
+         as "how far into the growth curve are we". */
+      .scrub {
+        position: relative;
+        height: 60px;
+        cursor: pointer;
+        touch-action: none;
+        outline: none;
+      }
+      .scrub:focus-visible {
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
+        border-radius: 6px;
+      }
+      .spark {
+        display: block;
+        width: 100%;
+        height: 60px;
+      }
+      .spark .line {
+        fill: none;
+        stroke: #c7cbdb;
+        stroke-width: 1.5;
+        vector-effect: non-scaling-stroke;
+      }
+      .spark .line-past {
+        stroke: #6366f1;
+      }
+      .spark .baseline {
+        stroke: #e7e9f2;
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+      }
+
+      /* Period markers ride above the SVG as HTML so they never inherit the
+         non-uniform scale the stretched viewBox applies. */
+      .marks {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .mark {
+        position: absolute;
+        transform: translateX(-50%);
+        bottom: -2px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #a7adc2;
+        white-space: nowrap;
+        transition: color 140ms ease;
+      }
+      .mark.past {
+        color: #7c83a0;
+      }
+      .mark.current {
+        color: #3730a3;
+      }
+      /* Every period gets a dot on the headcount curve; the periods where
+         somebody changed manager get a diamond instead, so the structural
+         changes (the ones worth scrubbing to) are findable at a glance. */
+      .dot {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        margin: -2.5px 0 0 -2.5px;
+        border-radius: 50%;
+        background: #cbd0e1;
+        transition: background 140ms ease;
+      }
+      .dot.reorg {
+        width: 7px;
+        height: 7px;
+        margin: -3.5px 0 0 -3.5px;
+        border-radius: 1.5px;
+        background: #b9bed2;
+        transform: rotate(45deg);
+      }
+      .dot.past {
+        background: #818cf8;
+      }
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 14px;
+        width: 1px;
+        background: #6366f1;
+        margin-left: -0.5px;
+        transition: left 180ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .knob {
+        position: absolute;
+        width: 11px;
+        height: 11px;
+        margin: -5.5px 0 0 -5.5px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2.5px solid #6366f1;
+        box-shadow: 0 1px 4px rgba(55, 48, 163, 0.28);
+        transition:
+          left 180ms cubic-bezier(0.22, 1, 0.36, 1),
+          top 180ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .playhead,
+        .knob,
+        .mark,
+        .dot {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="titles">
+        <h1>Time Travel</h1>
+        <p>Scrub the timeline: the same people move, join, and leave in place.</p>
+      </div>
+      <button class="play" id="play" type="button">
+        <span class="glyph" id="playGlyph">&#9654;</span><span id="playLabel">Play</span>
+      </button>
+      <div class="readout">
+        <span class="period" id="period">Q1 2023</span>
+        <span class="count" id="count">4 people</span>
+      </div>
+      <div class="changes">
+        <span class="chip joined hidden" id="chipJoined"></span>
+        <span class="chip left hidden" id="chipLeft"></span>
+        <span class="chip moved hidden" id="chipMoved"></span>
+      </div>
+    </header>
+
+    <main>
+      <div class="stage"><div id="svg-tree"></div></div>
+    </main>
+
+    <footer>
+      <div class="note" id="note"></div>
+      <div class="scrub" id="scrub" tabindex="0" role="slider" aria-label="Quarter" aria-valuemin="1">
+        <svg class="spark" id="spark" viewBox="0 0 1000 60" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="pastFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6366f1" stop-opacity="0.30" />
+              <stop offset="100%" stop-color="#6366f1" stop-opacity="0.02" />
+            </linearGradient>
+            <linearGradient id="futureFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#9aa0b5" stop-opacity="0.14" />
+              <stop offset="100%" stop-color="#9aa0b5" stop-opacity="0.01" />
+            </linearGradient>
+            <clipPath id="pastClip" clipPathUnits="userSpaceOnUse">
+              <rect id="pastRect" x="0" y="0" width="0" height="60" />
+            </clipPath>
+          </defs>
+          <path id="areaFuture" fill="url(#futureFill)" />
+          <path id="lineFuture" class="line" />
+          <g clip-path="url(#pastClip)">
+            <path id="areaPast" fill="url(#pastFill)" />
+            <path id="linePast" class="line line-past" />
+          </g>
+          <line class="baseline" x1="0" y1="50" x2="1000" y2="50" />
+        </svg>
+        <div class="marks" id="marks"></div>
+        <div class="playhead" id="playhead"></div>
+        <div class="knob" id="knob"></div>
+      </div>
+    </footer>
+
+    <script>
+      // ── The company as an event log ────────────────────────────────────────
+      // Snapshots are folded from operations rather than written out one tree at
+      // a time. That keeps ids stable by construction (the thing that lets a
+      // person be recognised across quarters and animated instead of rebuilt),
+      // and the op list doubles as the caption for each step.
+      const hire = (id, name, role, dept, parent) => ({op: 'hire', id, name, role, dept, parent});
+      const leave = (id) => ({op: 'leave', id});
+      const move = (id, parent) => ({op: 'move', id, parent});
+      const title = (id, role) => ({op: 'title', id, role});
+
+      const HISTORY = [
+        {
+          period: 'Q1 2023',
+          note: 'Four people and a plan.',
+          ops: [
+            hire('ceo', 'Alex Rivera', 'Founder & CEO', 'exec', null),
+            hire('eng', 'Mia Chen', 'VP Engineering', 'eng', 'ceo'),
+            hire('sales', 'Ben Haas', 'VP Sales', 'sales', 'ceo'),
+            hire('e1', 'Ada Novak', 'Engineer', 'eng', 'eng'),
+          ],
+        },
+        {
+          period: 'Q2 2023',
+          note: 'Engineering triples and the first account exec starts closing.',
+          ops: [
+            hire('e2', 'Kai Weber', 'Engineer', 'eng', 'eng'),
+            hire('e3', 'Ivy Ortiz', 'Engineer', 'eng', 'eng'),
+            hire('s1', 'Zoe Frost', 'Account Exec', 'sales', 'sales'),
+          ],
+        },
+        {
+          period: 'Q3 2023',
+          note: 'Core gets a lead. Three engineers change manager without leaving the chart.',
+          ops: [
+            hire('eng-core', 'Leo Torres', 'Core Team Lead', 'eng', 'eng'),
+            move('e1', 'eng-core'),
+            move('e2', 'eng-core'),
+            move('e3', 'eng-core'),
+          ],
+        },
+        {
+          period: 'Q4 2023',
+          note: 'The first data hire lands inside Engineering.',
+          ops: [
+            hire('d1', 'Nia Adler', 'Data Engineer', 'data', 'eng'),
+            hire('s2', 'Tom Kim', 'Account Exec', 'sales', 'sales'),
+          ],
+        },
+        {
+          period: 'Q1 2024',
+          note: 'Data becomes a team of its own, still under Engineering.',
+          ops: [
+            hire('eng-data', 'Sam Patel', 'Data Team Lead', 'data', 'eng'),
+            move('d1', 'eng-data'),
+            hire('d2', 'Eve Lund', 'Analyst', 'data', 'eng-data'),
+          ],
+        },
+        {
+          period: 'Q2 2024',
+          note: 'Ada is promoted to Staff Engineer.',
+          ops: [
+            title('e1', 'Staff Engineer'),
+            hire('e4', 'Jon Rossi', 'Engineer', 'eng', 'eng-core'),
+            hire('s3', 'Ana Ruiz', 'Account Exec', 'sales', 'sales'),
+          ],
+        },
+        {
+          period: 'Q3 2024',
+          note: 'Reorg: Data spins out of Engineering and reports to the CEO.',
+          ops: [
+            move('eng-data', 'ceo'),
+            title('eng-data', 'Head of Data'),
+            hire('d3', 'Ravi Kim', 'Analyst', 'data', 'eng-data'),
+            leave('s1'),
+          ],
+        },
+        {
+          period: 'Q4 2024',
+          note: 'A platform team stands up under Engineering.',
+          ops: [
+            hire('eng-plat', 'Ola Frost', 'Platform Lead', 'eng', 'eng'),
+            hire('p1', 'Max Haas', 'Engineer', 'eng', 'eng-plat'),
+            hire('p2', 'Iris Lang', 'Site Reliability', 'eng', 'eng-plat'),
+          ],
+        },
+        {
+          period: 'Q1 2025',
+          note: 'Marketing opens. Kai leaves for a startup.',
+          ops: [
+            hire('mkt', 'Rae Solis', 'Head of Marketing', 'mkt', 'ceo'),
+            hire('m1', 'Luca Pinto', 'Content Lead', 'mkt', 'mkt'),
+            leave('e2'),
+          ],
+        },
+        {
+          period: 'Q2 2025',
+          note: 'Mia steps up to CTO as the company passes twenty.',
+          ops: [
+            title('eng', 'CTO'),
+            hire('e5', 'Nour Aziz', 'Engineer', 'eng', 'eng-core'),
+            hire('d4', 'Pia Berg', 'Data Scientist', 'data', 'eng-data'),
+            hire('m2', 'Sofia Marek', 'Demand Gen', 'mkt', 'mkt'),
+          ],
+        },
+      ];
+
+      const DEPT_COLOR = {
+        exec: '#6366f1',
+        eng: '#0ea5e9',
+        data: '#8b5cf6',
+        sales: '#f59e0b',
+        mkt: '#ec4899',
+      };
+
+      // ── Fold the log into one snapshot per period ──────────────────────────
+      // People live in an insertion-ordered map, so sibling order stays stable
+      // across periods: a node keeps its place among its peers even after the
+      // team around it changes, which is what makes the morph readable.
+      function buildSnapshots() {
+        const people = new Map();
+        const out = [];
+        let rootId = null;
+
+        HISTORY.forEach((step, index) => {
+          const joined = [];
+          const departed = [];
+          const moved = [];
+
+          for (const op of step.ops) {
+            if (op.op === 'hire') {
+              people.set(op.id, {id: op.id, name: op.name, role: op.role, dept: op.dept, parent: op.parent});
+              if (op.parent === null) rootId = op.id;
+              else joined.push(op.name);
+            } else if (op.op === 'leave') {
+              const person = people.get(op.id);
+              if (!person) continue;
+              // Anyone reporting to the leaver moves up a level rather than
+              // being orphaned, which is both realistic and keeps the tree valid.
+              people.forEach((other) => {
+                if (other.parent === op.id) other.parent = person.parent;
+              });
+              people.delete(op.id);
+              departed.push(person.name);
+            } else if (op.op === 'move') {
+              const person = people.get(op.id);
+              if (!person) continue;
+              person.parent = op.parent;
+              moved.push(person.name);
+            } else if (op.op === 'title') {
+              const person = people.get(op.id);
+              if (person) person.role = op.role;
+            }
+          }
+
+          // Everyone hired in THIS period is flagged for one step only, so the
+          // pip that marks a new arrival clears itself on the next quarter.
+          const newIds = new Set(step.ops.filter((o) => o.op === 'hire').map((o) => o.id));
+
+          const toNode = (person) => ({
+            id: person.id,
+            name: person.id,
+            data: {
+              name: person.name,
+              role: person.role,
+              accent: DEPT_COLOR[person.dept] ?? '#94a3b8',
+              isNew: newIds.has(person.id) && index > 0,
+            },
+            children: [...people.values()].filter((p) => p.parent === person.id).map(toNode),
+          });
+
+          out.push({
+            period: step.period,
+            note: step.note,
+            headcount: people.size,
+            // Nobody "joined" in the first period: that is the founding team, so
+            // the change chips stay empty rather than reporting the whole org.
+            joined: index === 0 ? [] : joined,
+            departed,
+            moved,
+            reorg: step.ops.some((o) => o.op === 'move'),
+            data: toNode(people.get(rootId)),
+          });
+        });
+
+        return out;
+      }
+
+      const FRAMES = buildSnapshots();
+      const LAST = FRAMES.length - 1;
+
+      // ── Chart ──────────────────────────────────────────────────────────────
+      const escapeHtml = (value) =>
+        String(value).replace(
+          /[&<>"']/g,
+          (ch) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[ch]
+        );
+
+      function nodeTemplate(d) {
+        // A filled pip (not a colour change on the card) marks this quarter's
+        // arrivals, so a fast scrub still shows who is new.
+        const pip = d.isNew
+          ? `<span style="flex:none;width:6px;height:6px;border-radius:50%;background:${escapeHtml(d.accent)};"></span>`
+          : '';
+        return `<div style="display:flex;height:100%;overflow:hidden;">
+          <span aria-hidden="true" style="flex:none;width:4px;background:${escapeHtml(d.accent)};"></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:6px 10px;">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span style="flex:1;min-width:0;font-weight:700;font-size:12.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.name)}</span>
+              ${pip}
+            </div>
+            <div style="font-size:10.5px;color:#5b6178;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.role)}</div>
+          </div>
+        </div>`;
+      }
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), {
+        width: '100%',
+        height: '100%',
+        viewPortWidth: 1400,
+        viewPortHeight: 640,
+        contentKey: 'data',
+        nodeTemplate,
+        nodeWidth: 150,
+        nodeHeight: 50,
+        borderRadius: '9px',
+        childrenSpacing: 64,
+        siblingSpacing: 18,
+        // Ten individual contributors on one level would stretch the chart far
+        // wider than tall, shrinking every card to fit. Stacking each manager's
+        // leaves vertically keeps the org readable as it triples in size.
+        groupLeafNodes: true,
+        groupLeafNodesSpacing: 14,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 1.5,
+        enableToolbar: true,
+        enableSelection: 'multi',
+        canvasStyle: 'background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f2f3f9 100%);',
+      });
+      const graph = tree.render(FRAMES[0].data);
+
+      // ── Timeline geometry ──────────────────────────────────────────────────
+      // The SVG stretches horizontally (preserveAspectRatio="none") but its
+      // height is pinned to 60px in CSS, so viewBox y units are also pixels and
+      // the HTML knob can be placed straight from the chart maths.
+      const PAD_X = 20;
+      const SPAN = 1000 - PAD_X * 2;
+      const TOP = 8;
+      const BASE = 50;
+      const MAX_HC = Math.max(...FRAMES.map((f) => f.headcount));
+
+      const xAt = (i) => PAD_X + (i / LAST) * SPAN;
+      const yAt = (v) => BASE - (v / MAX_HC) * (BASE - TOP);
+
+      const points = FRAMES.map((f, i) => [xAt(i), yAt(f.headcount)]);
+      const linePath = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+      const areaPath = `${linePath} L${xAt(LAST).toFixed(1)},${BASE} L${xAt(0).toFixed(1)},${BASE} Z`;
+
+      for (const id of ['lineFuture', 'linePast']) document.getElementById(id).setAttribute('d', linePath);
+      for (const id of ['areaFuture', 'areaPast']) document.getElementById(id).setAttribute('d', areaPath);
+
+      const marksEl = document.getElementById('marks');
+      const markEls = [];
+      const milestoneEls = [];
+      FRAMES.forEach((frame, i) => {
+        const left = `${(xAt(i) / 1000) * 100}%`;
+
+        // Only label the year boundaries: ten labels in a row would collide on a
+        // narrow window, and the diamonds already give every period a target.
+        const label = document.createElement('span');
+        label.className = 'mark';
+        label.style.left = left;
+        label.textContent = frame.period.startsWith('Q1') || i === 0 || i === LAST ? frame.period : '';
+        marksEl.appendChild(label);
+        markEls.push(label);
+
+        const dot = document.createElement('span');
+        dot.className = frame.reorg ? 'dot reorg' : 'dot';
+        dot.style.left = left;
+        dot.style.top = `${yAt(frame.headcount)}px`;
+        marksEl.appendChild(dot);
+        milestoneEls.push(dot);
+      });
+
+      // ── Wiring ─────────────────────────────────────────────────────────────
+      const scrubEl = document.getElementById('scrub');
+      const playheadEl = document.getElementById('playhead');
+      const knobEl = document.getElementById('knob');
+      const pastRectEl = document.getElementById('pastRect');
+      const periodEl = document.getElementById('period');
+      const countEl = document.getElementById('count');
+      const noteEl = document.getElementById('note');
+      const playEl = document.getElementById('play');
+      const playGlyphEl = document.getElementById('playGlyph');
+      const playLabelEl = document.getElementById('playLabel');
+      const chips = {
+        joined: document.getElementById('chipJoined'),
+        left: document.getElementById('chipLeft'),
+        moved: document.getElementById('chipMoved'),
+      };
+
+      scrubEl.setAttribute('aria-valuemax', String(FRAMES.length));
+
+      let current = -1;
+      let timer = null;
+
+      const names = (list) =>
+        list.length > 2 ? `${list.slice(0, 2).join(', ')} +${list.length - 2}` : list.join(', ');
+
+      function setChip(el, count, verb, list) {
+        el.classList.toggle('hidden', count === 0);
+        if (count > 0) el.textContent = `${verb} ${count}: ${names(list)}`;
+      }
+
+      function goTo(index, updateChart = true) {
+        const i = Math.max(0, Math.min(LAST, index));
+        if (i === current) return;
+        current = i;
+        const frame = FRAMES[i];
+
+        // The chart update: one call, same node identities, springs do the rest.
+        // The very first call only syncs the chrome, since the initial render
+        // already put this frame on screen.
+        if (updateChart) graph.updateData(frame.data);
+
+        const left = `${(xAt(i) / 1000) * 100}%`;
+        playheadEl.style.left = left;
+        knobEl.style.left = left;
+        knobEl.style.top = `${yAt(frame.headcount)}px`;
+        pastRectEl.setAttribute('width', String(xAt(i)));
+        markEls.forEach((el, n) => {
+          el.classList.toggle('past', n < i);
+          el.classList.toggle('current', n === i);
+        });
+        milestoneEls.forEach((el, n) => el.classList.toggle('past', n <= i));
+
+        periodEl.textContent = frame.period;
+        countEl.textContent = `${frame.headcount} ${frame.headcount === 1 ? 'person' : 'people'}`;
+        noteEl.innerHTML = `<b>${escapeHtml(frame.period)}</b> &middot; ${escapeHtml(frame.note)}`;
+        setChip(chips.joined, frame.joined.length, 'Joined', frame.joined);
+        setChip(chips.left, frame.departed.length, 'Left', frame.departed);
+        setChip(chips.moved, frame.moved.length, 'Moved', frame.moved);
+
+        scrubEl.setAttribute('aria-valuenow', String(i + 1));
+        scrubEl.setAttribute('aria-valuetext', `${frame.period}, ${frame.headcount} people`);
+      }
+
+      function indexFromClientX(clientX) {
+        const rect = scrubEl.getBoundingClientRect();
+        const units = ((clientX - rect.left) / rect.width) * 1000;
+        return Math.round(((units - PAD_X) / SPAN) * LAST);
+      }
+
+      // Dragging only fires an update when it crosses into a new period, so a
+      // fast sweep retargets the springs a handful of times instead of per pixel.
+      let dragging = false;
+      scrubEl.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        scrubEl.setPointerCapture(e.pointerId);
+        stop();
+        goTo(indexFromClientX(e.clientX));
+      });
+      scrubEl.addEventListener('pointermove', (e) => {
+        if (dragging) goTo(indexFromClientX(e.clientX));
+      });
+      const endDrag = () => (dragging = false);
+      scrubEl.addEventListener('pointerup', endDrag);
+      scrubEl.addEventListener('pointercancel', endDrag);
+
+      scrubEl.addEventListener('keydown', (e) => {
+        const step = {ArrowLeft: -1, ArrowRight: 1, ArrowDown: -1, ArrowUp: 1}[e.key];
+        if (step === undefined) {
+          if (e.key === 'Home') goTo(0);
+          else if (e.key === 'End') goTo(LAST);
+          else return;
+        } else {
+          stop();
+          goTo(current + step);
+        }
+        e.preventDefault();
+      });
+
+      function stop() {
+        if (timer === null) return;
+        clearInterval(timer);
+        timer = null;
+        playGlyphEl.innerHTML = '&#9654;';
+        playLabelEl.textContent = 'Play';
+      }
+
+      function start() {
+        if (timer !== null) return;
+        playGlyphEl.innerHTML = '&#10073;&#10073;';
+        playLabelEl.textContent = 'Pause';
+        // Looping back to the four-person seed team is worth watching: every
+        // node added since Q1 2023 retracts into its manager at once.
+        timer = setInterval(() => goTo(current >= LAST ? 0 : current + 1), 1400);
+      }
+
+      playEl.addEventListener('click', () => (timer === null ? start() : stop()));
+
+      goTo(0, false);
+    </script>
+  </body>
+</html>

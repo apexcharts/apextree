@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Batch Expand / Collapse</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 16px;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .controls button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        cursor: pointer;
+      }
+      .controls button:hover {
+        border-color: #6366f1;
+        color: #4338ca;
+      }
+      .controls .sep {
+        width: 1px;
+        height: 22px;
+        background: #e4e7ec;
+        margin: 0 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Batch Expand / Collapse</h2>
+    <p class="subtitle">
+      Whole-tree verbs, each a single spring reflow: <code>expandAll()</code>, <code>collapseAll()</code>,
+      <code>expandToDepth(n)</code>, and <code>expandSubtree</code> / <code>collapseSubtree</code> per node.
+    </p>
+    <div class="controls">
+      <button id="btn-expand-all">Expand all</button>
+      <button id="btn-collapse-all">Collapse all</button>
+      <span class="sep"></span>
+      <button data-depth="0">Depth 0</button>
+      <button data-depth="1">Depth 1</button>
+      <button data-depth="2">Depth 2</button>
+      <button data-depth="3">Depth 3</button>
+      <span class="sep"></span>
+      <button id="btn-expand-eng">Expand Engineering subtree</button>
+      <button id="btn-collapse-eng">Collapse Engineering subtree</button>
+    </div>
+    <div id="svg-tree"></div>
+    <script>
+      const data = {
+        id: 'ceo',
+        name: 'CEO',
+        children: [
+          {
+            id: 'engineering',
+            name: 'Engineering',
+            children: [
+              {
+                id: 'platform',
+                name: 'Platform',
+                children: [
+                  {id: 'p1', name: 'Kernel'},
+                  {id: 'p2', name: 'Data'},
+                ],
+              },
+              {
+                id: 'frontend',
+                name: 'Frontend',
+                children: [
+                  {id: 'f1', name: 'Web'},
+                  {id: 'f2', name: 'Mobile'},
+                ],
+              },
+            ],
+          },
+          {
+            id: 'sales',
+            name: 'Sales',
+            children: [
+              {
+                id: 'emea',
+                name: 'EMEA',
+                children: [
+                  {id: 's1', name: 'UK'},
+                  {id: 's2', name: 'DE'},
+                ],
+              },
+              {
+                id: 'amer',
+                name: 'AMER',
+                children: [
+                  {id: 's3', name: 'US'},
+                  {id: 's4', name: 'CA'},
+                ],
+              },
+            ],
+          },
+          {
+            id: 'marketing',
+            name: 'Marketing',
+            children: [
+              {id: 'brand', name: 'Brand'},
+              {id: 'growth', name: 'Growth'},
+            ],
+          },
+        ],
+      };
+
+      const options = {
+        width: '100%',
+        viewPortWidth: 1000,
+        viewPortHeight: 600,
+        nodeWidth: 120,
+        nodeHeight: 42,
+        childrenSpacing: 64,
+        siblingSpacing: 20,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 2,
+        enableToolbar: true,
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      const graph = tree.render(data);
+
+      document.getElementById('btn-expand-all').addEventListener('click', () => graph.expandAll());
+      document.getElementById('btn-collapse-all').addEventListener('click', () => graph.collapseAll());
+      document
+        .querySelectorAll('[data-depth]')
+        .forEach((b) => b.addEventListener('click', () => graph.expandToDepth(Number(b.getAttribute('data-depth')))));
+      document.getElementById('btn-expand-eng').addEventListener('click', () => graph.expandSubtree('engineering'));
+      document.getElementById('btn-collapse-eng').addEventListener('click', () => graph.collapseSubtree('engineering'));
+    </script>
+  </body>
+</html>

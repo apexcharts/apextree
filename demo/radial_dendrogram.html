@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radial Dendrogram - Flare hierarchy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1160px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 16px;
+      }
+      .toggle {
+        display: inline-flex;
+        gap: 2px;
+        padding: 3px;
+        margin-bottom: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        background: #f8fafc;
+      }
+      .toggle button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        color: #475569;
+        padding: 6px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition:
+          background 140ms ease,
+          color 140ms ease;
+      }
+      .toggle button:hover {
+        color: #0f172a;
+      }
+      .toggle button[aria-pressed='true'] {
+        background: #fff;
+        color: #0f172a;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Radial Dendrogram &mdash; Flare hierarchy</h2>
+    <p class="subtitle">
+      A dense, 4-level hierarchy (~250 nodes). Dot nodes with labels that fan out along each spoke, curved radial links
+      (<code>direction: 'radial'</code>). Toggle the layout: <strong>Dendrogram</strong> pins every leaf to the outer
+      ring (<code>layoutType: 'cluster'</code>); <strong>Tidy tree</strong> places leaves by depth (<code
+        >layoutType: 'tree'</code
+      >) and declutters the crowded inner rings with <code>externalLabel.collisionStrategy: 'hide'</code>.
+    </p>
+    <div class="toggle" role="group" aria-label="Layout type">
+      <button id="btn-cluster" type="button" aria-pressed="true">Dendrogram (cluster)</button>
+      <button id="btn-tree" type="button" aria-pressed="false">Tidy tree</button>
+    </div>
+    <div id="svg-tree"></div>
+    <script>
+      // The classic Flare package hierarchy. Written as a compact nested spec:
+      // a string is a leaf, a [name, [...children]] pair is a branch.
+      const spec = [
+        'flare',
+        [
+          [
+            'analytics',
+            [
+              ['cluster', ['AgglomerativeCluster', 'CommunityStructure', 'HierarchicalCluster', 'MergeEdge']],
+              ['graph', ['BetweennessCentrality', 'LinkDistance', 'MaxFlowMinCut', 'ShortestPaths', 'SpanningTree']],
+              ['optimization', ['AspectRatioBanker']],
+            ],
+          ],
+          [
+            'animate',
+            [
+              'Easing',
+              'FunctionSequence',
+              [
+                'interpolate',
+                [
+                  'ArrayInterpolator',
+                  'ColorInterpolator',
+                  'DateInterpolator',
+                  'Interpolator',
+                  'MatrixInterpolator',
+                  'NumberInterpolator',
+                  'ObjectInterpolator',
+                  'PointInterpolator',
+                  'RectangleInterpolator',
+                ],
+              ],
+              'ISchedulable',
+              'Parallel',
+              'Pause',
+              'Scheduler',
+              'Sequence',
+              'Transition',
+              'Transitioner',
+              'TransitionEvent',
+              'Tween',
+            ],
+          ],
+          [
+            'data',
+            [
+              [
+                'converters',
+                ['Converters', 'DelimitedTextConverter', 'GraphMLConverter', 'IDataConverter', 'JSONConverter'],
+              ],
+              'DataField',
+              'DataSchema',
+              'DataSet',
+              'DataSource',
+              'DataTable',
+              'DataUtil',
+            ],
+          ],
+          ['display', ['DirtySprite', 'LineSprite', 'RectSprite', 'TextSprite']],
+          ['flex', ['FlareVis']],
+          [
+            'physics',
+            ['DragForce', 'GravityForce', 'IForce', 'NBodyForce', 'Particle', 'Simulation', 'Spring', 'SpringForce'],
+          ],
+          [
+            'query',
+            [
+              'AggregateExpression',
+              'And',
+              'Arithmetic',
+              'Average',
+              'BinaryExpression',
+              'Comparison',
+              'CompositeExpression',
+              'Count',
+              'DateUtil',
+              'Distinct',
+              'Expression',
+              'ExpressionIterator',
+              'Fn',
+              'If',
+              'IsA',
+              'Literal',
+              'Match',
+              'Maximum',
+              [
+                'methods',
+                [
+                  'add',
+                  'and',
+                  'average',
+                  'count',
+                  'distinct',
+                  'div',
+                  'eq',
+                  'fn',
+                  'gt',
+                  'gte',
+                  'iff',
+                  'isa',
+                  'lt',
+                  'lte',
+                  'max',
+                  'min',
+                  'mod',
+                  'mul',
+                  'neq',
+                  'not',
+                  'or',
+                  'orderby',
+                  'range',
+                  'select',
+                  'stddev',
+                  'sub',
+                  'sum',
+                  'update',
+                  'variance',
+                  'where',
+                  'xor',
+                  '_',
+                ],
+              ],
+              'Minimum',
+              'Not',
+              'Or',
+              'Query',
+              'Range',
+              'StringUtil',
+              'Sum',
+              'Variable',
+              'Variance',
+              'Xor',
+            ],
+          ],
+          [
+            'scale',
+            [
+              'IScaleMap',
+              'LinearScale',
+              'LogScale',
+              'OrdinalScale',
+              'QuantileScale',
+              'QuantitativeScale',
+              'RootScale',
+              'Scale',
+              'ScaleType',
+              'TimeScale',
+            ],
+          ],
+          [
+            'util',
+            [
+              'Arrays',
+              'Colors',
+              'Dates',
+              'Displays',
+              'Filter',
+              'Geometry',
+              ['heap', ['FibonacciHeap', 'HeapNode']],
+              'IEvaluable',
+              'IPredicate',
+              'IValueProxy',
+              ['math', ['DenseMatrix', 'IMatrix', 'SparseMatrix']],
+              'Maths',
+              'Orientation',
+              ['palette', ['ColorPalette', 'Palette', 'ShapePalette', 'SizePalette']],
+              'Property',
+              'Shapes',
+              'Sort',
+              'Stats',
+              'Strings',
+            ],
+          ],
+          [
+            'vis',
+            [
+              ['axis', ['Axes', 'Axis', 'AxisGridLine', 'AxisLabel', 'CartesianAxes']],
+              [
+                'controls',
+                [
+                  'AnchorControl',
+                  'ClickControl',
+                  'Control',
+                  'ControlList',
+                  'DragControl',
+                  'ExpandControl',
+                  'HoverControl',
+                  'IControl',
+                  'PanZoomControl',
+                  'SelectionControl',
+                  'TooltipControl',
+                ],
+              ],
+              [
+                'data',
+                [
+                  'Data',
+                  'DataList',
+                  'DataSprite',
+                  'EdgeSprite',
+                  'NodeSprite',
+                  ['render', ['ArrowType', 'EdgeRenderer', 'IRenderer', 'ShapeRenderer']],
+                  'ScaleBinding',
+                  'Tree',
+                  'TreeBuilder',
+                ],
+              ],
+              ['events', ['DataEvent', 'SelectionEvent', 'TooltipEvent', 'VisualizationEvent']],
+              ['legend', ['Legend', 'LegendItem', 'LegendRange']],
+              [
+                'operator',
+                [
+                  ['distortion', ['BifocalDistortion', 'Distortion', 'FisheyeDistortion']],
+                  ['encoder', ['ColorEncoder', 'Encoder', 'PropertyEncoder', 'ShapeEncoder', 'SizeEncoder']],
+                  ['filter', ['FisheyeTreeFilter', 'GraphDistanceFilter', 'VisibilityFilter']],
+                  'IOperator',
+                  ['label', ['Labeler', 'RadialLabeler', 'StackedAreaLabeler']],
+                  [
+                    'layout',
+                    [
+                      'AxisLayout',
+                      'BundledEdgeRouter',
+                      'CircleLayout',
+                      'CirclePackingLayout',
+                      'DendrogramLayout',
+                      'ForceDirectedLayout',
+                      'IcicleTreeLayout',
+                      'IndentedTreeLayout',
+                      'Layout',
+                      'NodeLinkTreeLayout',
+                      'PieLayout',
+                      'RadialTreeLayout',
+                      'RandomLayout',
+                      'StackedAreaLayout',
+                      'TreeMapLayout',
+                    ],
+                  ],
+                  'Operator',
+                  'OperatorList',
+                  'OperatorSequence',
+                  'OperatorSwitch',
+                  'SortOperator',
+                ],
+              ],
+              'Visualization',
+            ],
+          ],
+        ],
+      ];
+
+      // Build the ApexTree data model, assigning a stable unique id per node
+      // (derived from its name, deduped if a name repeats across the tree).
+      const used = {};
+      const idFor = (name) => {
+        const base = name.replace(/[^A-Za-z0-9]/g, '_') || 'node';
+        let id = base;
+        let k = 1;
+        while (used[id]) id = `${base}_${k++}`;
+        used[id] = true;
+        return id;
+      };
+      const toNode = (s) =>
+        typeof s === 'string' ? {id: idFor(s), name: s} : {id: idFor(s[0]), name: s[0], children: s[1].map(toNode)};
+      const data = toNode(spec);
+
+      // Nodes are just dots; the label rides outside as an external label.
+      const dot = () => `
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+          <span style="width:5px;height:5px;border-radius:50%;background:#fff;border:1.25px solid #38bdf8;box-sizing:border-box;"></span>
+        </div>`;
+
+      // Options shared by both layouts. Only `layoutType` and the label
+      // collision strategy change between the two views.
+      const optionsFor = (mode) => ({
+        width: 1120,
+        height: 1120,
+        viewPortWidth: 1040,
+        viewPortHeight: 1040,
+        nodeWidth: 5,
+        nodeHeight: 5,
+        childrenSpacing: 60,
+        siblingSpacing: 3,
+        // Reserve room for the long outer labels, which extend past the node
+        // bounding box the viewBox is fitted to.
+        paddingX: 180,
+        paddingY: 180,
+        direction: 'radial',
+        layoutType: mode,
+        edgeColor: '#cbd5e1',
+        edgeWidth: 0.75,
+        nodeBGColor: 'transparent',
+        nodeBGColorHover: 'transparent',
+        borderWidth: 0,
+        nodeShadow: '',
+        nodeShadowHover: '',
+        highlightOnHover: false,
+        enableExpandCollapse: false,
+        enableToolbar: true,
+        nodeTemplate: dot,
+        externalLabel: {
+          enabled: true,
+          offsetX: 7,
+          fontSize: '9px',
+          fontColor: '#334155',
+          // Cluster puts every leaf on the roomy outer ring, so all labels fit.
+          // Tidy tree crams leaves onto small inner rings, so declutter them.
+          collisionStrategy: mode === 'tree' ? 'hide' : 'none',
+        },
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+      });
+
+      const host = document.getElementById('svg-tree');
+      const btnCluster = document.getElementById('btn-cluster');
+      const btnTree = document.getElementById('btn-tree');
+
+      const build = (mode) => {
+        // Recreate the tree so the new layout options take effect cleanly.
+        host.innerHTML = '';
+        const tree = new ApexTree(host, optionsFor(mode));
+        tree.render(data);
+        btnCluster.setAttribute('aria-pressed', String(mode === 'cluster'));
+        btnTree.setAttribute('aria-pressed', String(mode === 'tree'));
+      };
+
+      btnCluster.addEventListener('click', () => build('cluster'));
+      btnTree.addEventListener('click', () => build('tree'));
+
+      build('cluster');
+    </script>
+  </body>
+</html>

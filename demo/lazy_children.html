@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lazy Children (load on expand)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../apextree.min.js"></script>
+    <style>
+      body {
+        max-width: 1000px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+        background: #fff;
+        padding: 20px 0;
+      }
+      h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0 0 4px 0;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #6e6e6e;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Lazy Children</h2>
+    <p class="subtitle">
+      Nodes marked <code>hasChildren: true</code> with no loaded children fetch on first expand via
+      <code>loadChildren</code>. Expand a folder: it spins, then its children spring in. Each node loads at most once.
+      This demo simulates a ~600ms network call and goes three levels deep.
+    </p>
+    <div id="svg-tree"></div>
+    <script>
+      // Only the root is known up front; every folder is lazy.
+      const data = {
+        id: 'root',
+        name: 'Company',
+        children: [
+          {id: 'eng', name: 'Engineering', children: [], hasChildren: true},
+          {id: 'sales', name: 'Sales', children: [], hasChildren: true},
+          {id: 'ops', name: 'Operations', children: [], hasChildren: true},
+        ],
+      };
+
+      // Fake backend: derive a couple of child "folders" from the parent id, up to
+      // a depth of 3. Leaves (depth 3) come back with hasChildren: false.
+      function fakeFetch(id) {
+        const depth = id.split('/').length; // root children are depth 1
+        if (depth >= 3) return [];
+        return [
+          {id: `${id}/a`, name: `${id.split('/').pop()} · Team A`, children: [], hasChildren: depth < 2},
+          {id: `${id}/b`, name: `${id.split('/').pop()} · Team B`, children: [], hasChildren: depth < 2},
+        ];
+      }
+
+      const options = {
+        width: '100%',
+        viewPortWidth: 1000,
+        viewPortHeight: 560,
+        nodeWidth: 150,
+        nodeHeight: 42,
+        childrenSpacing: 64,
+        siblingSpacing: 20,
+        direction: 'top',
+        edgeStyle: 'curved',
+        edgeWidth: 2,
+        enableToolbar: true,
+        canvasStyle: 'border: 1px solid #e0e0e0; border-radius: 8px; background: #fff;',
+        loadChildren: ({id, name}) =>
+          new Promise((resolve) => {
+            console.log('loading children of', id, `(${name})`);
+            setTimeout(() => resolve(fakeFetch(id)), 600);
+          }),
+      };
+
+      const tree = new ApexTree(document.getElementById('svg-tree'), options);
+      tree.render(data);
+    </script>
+  </body>
+</html>
