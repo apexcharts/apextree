@@ -77,7 +77,7 @@ The layout can be configured by passing a second argument to `ApexTree` with the
 | `paddingY` | `number` | `100` | Vertical padding around the rendered tree, in pixels. Useful when leaf nodes have rotated `externalLabel` content that extends past the marker bounds. |
 | `canvasStyle` | `string` | `''` | Arbitrary CSS injected onto the SVG root container element. |
 | `containerClassName` | `string` | `'root'` | CSS class name for the root SVG container element. |
-| `theme` | `'light' \| 'dark' \| 'custom'` | `'light'` | Built-in theme preset. `'dark'` uses slate backgrounds for dark-mode apps. `'custom'` disables built-in CSS variable injection so host-page variables take precedence. |
+| `theme` | `'light' \| 'dark' \| 'custom' \| string` | `'light'` | Theme preset. `'dark'` uses slate backgrounds for dark-mode apps. `'custom'` disables built-in CSS variable injection so host-page variables take precedence. Any other string names a theme on the shared family registry and behaves like `'custom'` plus that theme's `--apx-*` tokens. See [Family theme tokens](#family-theme-tokens---apx-). |
 
 ### Interaction & Features
 
@@ -712,6 +712,22 @@ The `tree.render(data)` call returns a `graph` instance with the following publi
 | --------------- | ------------------------------------------------ |
 | `exportToSvg()` | Export the current tree as an SVG file download. |
 
+## Teardown
+
+| Method | Description |
+| --- | --- |
+| `destroy()` | Tear the tree down: stop the spring animation loop, detach every listener the graph and its controls installed, and release the chart context. Call this before dropping your reference to the instance (a component unmount, a route change). Idempotent. |
+
+```js
+const tree = new ApexTree(el, options);
+tree.render(data);
+
+// on unmount
+tree.destroy();
+```
+
+Without this, a tree torn down mid-animation leaves its frame loop running against detached DOM until its springs settle.
+
 ### Example
 
 ```js
@@ -733,4 +749,61 @@ graph.onSelectionChange((ids) => {
 const matches = graph.findNodesByQuery('engineer');
 graph.setSearchHighlight(matches);
 graph.centerOnNode(matches[0]);
+```
+
+## Family theme tokens (`--apx-*`)
+
+Every chart in the ApexCharts family reads the same five root tokens, so a page can state its brand once and have trees, flow diagrams, Gantt charts and plots all follow:
+
+| Token                               | Role                                                             |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `--apx-accent`                      | The colour that means interactive or selected                    |
+| `--apx-fore`                        | Text and anything that must stay legible on the surface          |
+| `--apx-grid`                        | Hairlines: borders, gridlines, connectors                        |
+| `--apx-surface`                     | The plane content sits on                                        |
+| `--apx-series-1` … `--apx-series-N` | An ordered categorical palette (1-based, stops at the first gap) |
+
+```css
+:root {
+  --apx-accent: #5b21b6;
+  --apx-fore: #101828;
+  --apx-grid: #e4e7ec;
+  --apx-surface: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --apx-fore: #f8fafc;
+    --apx-grid: #334155;
+    --apx-surface: #0f172a;
+  }
+}
+```
+
+Custom properties inherit, so declaring them on `:root` reaches every chart on the page. They resolve **below anything you configured explicitly**, so adopting them cannot change a chart that was already themed:
+
+```
+product CSS variable  >  explicit option  >  --apx-* token  >  built-in default
+```
+
+An option set to a value equal to its built-in default is indistinguishable from one left alone, and the token wins there. Set a product variable if you need a value pinned regardless.
+
+### Named themes
+
+`registerTheme` from `@apex/commons` records a named set of tokens on a registry shared by the whole family, so a brand theme registered once from any product is resolvable by name from all of them:
+
+```js
+import {registerTheme} from '@apex/commons';
+
+registerTheme('acme', {
+  tokens: {accent: '#5b21b6', fore: '#101828', grid: '#e4e7ec', surface: '#ffffff'},
+});
+```
+
+A named theme's tokens sit one layer below the CSS `--apx-*` tokens, so the cascade still wins over the registry.
+
+Reference it through the `theme` option. `'light'`, `'dark'` and `'custom'` keep their built-in meanings; any other string names a registered theme and otherwise behaves like `'custom'` (no CSS injection, the cascade stays in charge). The name is always written to `data-apex-tree-theme` on the container.
+
+```js
+new ApexTree(el, {theme: 'acme'});
 ```

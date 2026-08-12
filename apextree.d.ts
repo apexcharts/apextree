@@ -104,6 +104,24 @@ declare class ApexTree extends BaseChart {
      * ```
      */
     static setLicense(key: string): void;
+    /**
+     * Tear down the tree: stop the spring loop, detach every listener the graph
+     * and its controls installed, then release the chart context.
+     *
+     * Call this before dropping your reference to the instance (a component
+     * unmount, a route change). Until this override existed, `destroy()` only
+     * released the chart context, so a tree torn down mid-animation left its
+     * frame loop running against detached DOM. Idempotent.
+     *
+     * @example
+     * ```ts
+     * const tree = new ApexTree(el, {});
+     * tree.render(data);
+     * // …later
+     * tree.destroy();
+     * ```
+     */
+    destroy(): void;
     private setupElementDimensions;
     /**
      * Handle watermark display based on license validation
@@ -360,11 +378,13 @@ export declare interface CommonOptions {
     /** Horizontal distance between sibling nodes in pixels. @default 50 */
     readonly siblingSpacing: number;
     /**
-     * Built-in theme preset. See {@link TreeTheme}.
+     * Theme preset. See {@link TreeTheme}.
      *
      * `'light'` uses the default soft-neutral palette; `'dark'` swaps to a
      * dark-mode palette with slate backgrounds; `'custom'` disables the
-     * built-in CSS variable injection so host-page variables win cleanly.
+     * built-in CSS variable injection so host-page variables win cleanly. Any
+     * other string names a theme on the shared family registry and behaves like
+     * `'custom'` plus that theme's `--apx-*` tokens.
      * @default 'light'
      */
     readonly theme: TreeTheme;
@@ -665,6 +685,10 @@ declare class Graph extends Paper {
     private lodTier;
     /** True once the zoom listener that drives semantic zoom is attached. */
     private lodZoomBound;
+    /** Detaches the semantic-zoom gesture listeners. Set when they are attached. */
+    private lodZoomTeardown;
+    /** Mirrors the OS reduced-motion preference onto the container. Attached on first render. */
+    private reducedMotionWatcher;
     /** Debounce handle for recomputing the LOD tier after a zoom gesture settles. */
     private lodDebounce;
     /** Ids whose lazy children are currently being fetched (show a spinner). */
@@ -1079,6 +1103,18 @@ declare class Graph extends Paper {
      * toolbar/keyboard zoom go through `zoom()`. Both funnel to a debounced tier
      * check so content re-tiers after the gesture settles, not on every frame.
      */
+    /**
+     * Mirror `prefers-reduced-motion` onto the container as
+     * `.apextree-reduced-motion`, from the first render onward.
+     *
+     * Deliberately not folded into the motion engine, which is created lazily and
+     * only on animated paths. The class is what the edge-flow keyframes, the
+     * focus transitions and the WAAPI entrance all read, and those run whether or
+     * not spring motion is switched on. Until this existed the class was only
+     * ever read and never written, so the OS setting reached a tree only if the
+     * embedding app added the class by hand.
+     */
+    private ensureReducedMotionWatcher;
     private ensureLodZoomListener;
     /** Debounced tier re-check after a zoom gesture settles. */
     private scheduleLodRefresh;
@@ -1107,6 +1143,17 @@ declare class Graph extends Paper {
      * is refreshed via `renderer.update()` by each render path.
      */
     private ensureRenderer;
+    /**
+     * Release everything that outlives a render pass: the spring driver and its
+     * frame loop, the keyboard navigator, the semantic-zoom gesture listeners and
+     * the pending LOD debounce.
+     *
+     * The motion engine is the one that matters. It owns a requestAnimationFrame
+     * loop and, until this existed, nothing ever stopped it: a tree destroyed
+     * while nodes were still travelling kept ticking and writing `data-x` /
+     * `clip-path` onto elements that were no longer in the document.
+     */
+    destroy(): void;
     /** Full rebuild: clear the canvas and re-create every node and edge from scratch. */
     private fullRender;
     /**
@@ -1868,6 +1915,17 @@ export declare type TreeSelectionMode = 'multi' | 'single' | false;
  *   the host page sets on the container (or a parent) win without being
  *   overridden.
  */
-export declare type TreeTheme = 'custom' | 'dark' | 'light';
+/**
+ * Theme preset for the tree.
+ *
+ * The three built-in values behave as they always have. Any other string is
+ * taken as the name of a theme registered on the shared family registry
+ * (`registerTheme` from `@apex/commons`, the same one the charts use): the tree
+ * injects nothing for it, exactly as for `'custom'`, and its `--apx-*` tokens
+ * are resolved one layer below explicit configuration. The name is always
+ * written to `data-apex-tree-theme` on the container, so host CSS can select on
+ * it either way.
+ */
+export declare type TreeTheme = 'custom' | 'dark' | 'light' | (string & {});
 
 export { }
