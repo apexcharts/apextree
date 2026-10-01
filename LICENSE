@@ -2,7 +2,7 @@
 
 ApexTree is a commercial product, included in the **Pro** plan and above.
 
-**There is no free tier for ApexTree.** The revenue threshold that makes some Apex products free does not apply to this one: a Pro license is required at any revenue, by companies, individuals, non-profits and educators alike. Without a valid license key ApexTree renders with a trial watermark, which is for evaluation only.
+**There is no free tier for ApexTree.** The $2M threshold that makes some Apex products free does not apply to this one: a Pro license is required whatever your financial resources, by companies, individuals, non-profits and educators alike. Without a valid license key ApexTree renders with a trial watermark, which is for evaluation only.
 
 One license key works across every Apex product, so a customer of one does not buy a second for another.
 
@@ -12,7 +12,7 @@ One license key works across every Apex product, so a customer of one does not b
 
 ApexTree requires a **Pro** license or higher. Plans below Pro do not include it, and neither does the free Community License.
 
-Pro and Premium are priced per developer, and priced on the features you use rather than on your revenue.
+Pro and Premium are priced per developer, and priced on the features you use rather than on your size.
 
 ✅ What's included:
 
@@ -68,7 +68,7 @@ For OEM licenses, continued redistribution requires an active subscription.
 
 By installing ApexTree (e.g., via `npm install apextree`), you are agreeing to the applicable license based on your usage:
 
-- Commercial License (Pro or higher, at any revenue)
+- Commercial License (Pro or higher, whatever your financial resources)
 - OEM License (if redistributing to third-party users)
 
 ---
