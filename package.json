@@ -1,7 +1,6 @@
 {
   "name": "apextree",
-  "version": "2.1.2",
-  "dependencies": {},
+  "version": "2.2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/apexcharts/apextree"
