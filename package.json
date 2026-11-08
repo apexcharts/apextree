@@ -20,6 +20,16 @@
         "types": "./apextree.d.ts",
         "default": "./apextree.min.js"
       }
+    },
+    "./ignite-ui": {
+      "import": {
+        "types": "./ignite-ui.d.ts",
+        "default": "./apextree.ignite-ui.es.min.js"
+      },
+      "require": {
+        "types": "./ignite-ui.d.ts",
+        "default": "./apextree.ignite-ui.min.js"
+      }
     }
   }
 }
