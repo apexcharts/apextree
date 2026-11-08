@@ -77,7 +77,9 @@ The layout can be configured by passing a second argument to `ApexTree` with the
 | `paddingY` | `number` | `100` | Vertical padding around the rendered tree, in pixels. Useful when leaf nodes have rotated `externalLabel` content that extends past the marker bounds. |
 | `canvasStyle` | `string` | `''` | Arbitrary CSS injected onto the SVG root container element. |
 | `containerClassName` | `string` | `'root'` | CSS class name for the root SVG container element. |
-| `theme` | `'light' \| 'dark' \| 'custom' \| string` | `'light'` | Theme preset. `'dark'` uses slate backgrounds for dark-mode apps. `'custom'` disables built-in CSS variable injection so host-page variables take precedence. Any other string names a theme on the shared family registry and behaves like `'custom'` plus that theme's `--apx-*` tokens. See [Family theme tokens](#family-theme-tokens---apx-). |
+| `theme` | `'light' \| 'dark' \| 'custom' \| string` | `'light'` | Theme preset. `'dark'` uses slate backgrounds for dark-mode apps; its colours rank below options you pass, `--apex-tree-*` variables and `--apx-*` tokens. `'custom'` disables the built-in CSS variable injection for the search, breadcrumb, command palette and toolbar. Any other string names a theme on the shared family registry and behaves like `'custom'` plus that theme's tokens. Left unset, it follows a design system that declares a dark variant. See [Family theme tokens](#family-theme-tokens---apx-). |
+| `tokens` | `boolean` | `true` | `false` stops the tree reading the `--apx-*` family tokens and the page's design system (including its variant). |
+| `designSystem` | `boolean` | `true` | `false` stops the tree reading the page's design system (Ignite UI's `--ig-*` tokens, including its variant). The `--apx-*` tokens still apply. Has an effect only while the `apextree/ignite-ui` add-on is loaded; see [Design systems](#design-systems-ignite-ui). |
 
 ### Interaction & Features
 
@@ -90,7 +92,7 @@ The layout can be configured by passing a second argument to `ApexTree` with the
 | `motion.stagger` | `'wave' \| 'none'` | `'wave'` | How a reflow propagates on collapse/expand. `'wave'` staggers nodes by their distance from the toggled node so the motion radiates outward; `'none'` moves them together. |
 | `focus` | `FocusOptions` | `{ clickToFocus: false, dimOpacity: 0.7 }` | Focus ("spotlight") mode. `graph.focus(id)` dims everything outside the node's lineage and visible subtree and springs the camera to frame the subtree; `graph.clearFocus()` or Escape restores the full view. |
 | `focus.clickToFocus` | `boolean` | `false` | Focus a node when its card is clicked. Clicking the focused node again, or pressing Escape, clears the spotlight. Clicks on the expand/collapse button keep toggling the subtree as usual. |
-| `focus.dimOpacity` | `number` | `0.7` | Strength of the dim applied outside the focused lineage and subtree, from `0` (no dim) to `1` (fully hidden). |
+| `focus.dimOpacity` | `number` | `0.7` | Strength of the dim applied outside the focused lineage and subtree, from `0` (no dim) to `1` (fully hidden). The dim takes the first background painted behind the tree; when nothing paints one it is white, or slate for the `'dark'` theme (with the [Ignite UI add-on](#design-systems-ignite-ui) loaded, `--apx-surface` or the design system's paper first). |
 | `enableExpandCollapse` | `boolean` | `true` | Show expand/collapse buttons on nodes that have children. |
 | `expandCollapseOnNodeClick` | `boolean` | `false` | When `true`, clicking anywhere on a node with children toggles its expansion — the node body itself acts as the trigger. Useful for marker-style trees where the dedicated `+`/`-` button is hidden. The toggle fires before `onNodeClick`. The cursor becomes a pointer on clickable nodes. |
 | `cardExpansion` | `CardExpansionOptions` | `{ clickToExpand: false }` | Expandable cards: a node's card can expand in place to reveal a detail section. `cardExpansion.clickToExpand` toggles on a card-body click; the `expandCard`/`collapseCard`/`toggleCard` API and the built-in chevron work regardless. See [Expandable cards](#expandable-cards). |
@@ -398,6 +400,27 @@ const options = {
   cardImagePosition: 'top', // avatar centered above the text
 };
 ```
+
+#### Card colours
+
+The card paints its secondary text, chips, hairline, progress track, links and chevron from CSS variables, so a page restyles them without a custom template. Set them on the container or any ancestor; each falls back to the colour the card has always had. A node's own `badge.color`, `progress.color` and `accentColor` still win.
+
+| Variable                       | Default   | Paints                                                               |
+| ------------------------------ | --------- | -------------------------------------------------------------------- |
+| `--apex-tree-card-secondary`   | `#475467` | Title, meta rows, tag text, details text                             |
+| `--apex-tree-card-muted`       | `#667085` | Subtitle, stat labels, the progress caption, the compact tier's role |
+| `--apex-tree-card-text`        | `#101828` | Stat values                                                          |
+| `--apex-tree-card-chip-bg`     | `#F1F5F9` | Tag chip background                                                  |
+| `--apex-tree-card-track`       | `#EEF2F6` | Progress track                                                       |
+| `--apex-tree-card-divider`     | `#EAECF0` | The hairline above the detail section                                |
+| `--apex-tree-card-chevron`     | `#98A2B3` | The expand chevron                                                   |
+| `--apex-tree-card-accent`      | `#5C6BC0` | Action links and the default progress fill                           |
+| `--apex-tree-card-badge-bg`    | `#EEF2FF` | Status chip background when `badge.color` is not set                 |
+| `--apex-tree-card-badge-color` | `#1E3A8A` | Status chip text                                                     |
+| `--apex-tree-lod-accent`       | `#94A3B8` | The compact and dot tiers' accent when a node has no `accentColor`   |
+| `--apex-tree-lod-dot-color`    | `#fff`    | The name on the dot tier's slab                                      |
+
+With the [Ignite UI add-on](#design-systems-ignite-ui) loaded, the cards also follow the design system below these variables: the text, chip, hairline and chevron colours take its gray steps, and links and the progress fill its primary (an `--apx-fore`, `--apx-grid` or `--apx-accent` token, or a registered theme's, wins over the design system there). A card whose background you set yourself (`nodeBGColor` for the whole tree or one node, or `--apex-tree-node-bg`) keeps the colours above, since the design system's grays suit only its own surface. A `fontColor` or `borderColorHover` you set carries into the stat values, or into the links and progress fill. Without the add-on the cards keep the colours above.
 
 ### Custom template
 
@@ -712,6 +735,17 @@ The `tree.render(data)` call returns a `graph` instance with the following publi
 | --------------- | ------------------------------------------------ |
 | `exportToSvg()` | Export the current tree as an SVG file download. |
 
+## Theme refresh
+
+| Method | Description |
+| --- | --- |
+| `refreshTokens()` | Re-read the `--apex-tree-*` variables, the `--apx-*` tokens, the registered theme and the page's design system, and repaint the tree with them at the current zoom. The tree reads them on every render, so call it when they change without one: a stylesheet swap (an Ignite UI light/dark switch), a class that sets the variables, or the `apextree/ignite-ui` add-on loaded after the first render. Nodes, expanded cards, selection, focus mode and the active path are kept. A no-op before `render()`. |
+
+```js
+themeLink.href = 'themes/dark/material.css';
+themeLink.onload = () => tree.refreshTokens();
+```
+
 ## Teardown
 
 | Method | Description |
@@ -780,20 +814,20 @@ Every chart in the ApexCharts family reads the same five root tokens, so a page 
 }
 ```
 
-Custom properties inherit, so declaring them on `:root` reaches every chart on the page. They resolve **below anything you configured explicitly**, so adopting them cannot change a chart that was already themed:
+Custom properties inherit, so declaring them on `:root` reaches every chart on the page. Every styling option resolves through the same order as the rest of the family, higher wins:
 
 ```
-product CSS variable  >  explicit option  >  --apx-* token  >  built-in default
+option you passed  >  --apex-tree-* variable  >  --apx-* token  >  'dark' preset or registered theme  >  design system  >  built-in default
 ```
 
-An option set to a value equal to its built-in default is indistinguishable from one left alone, and the token wins there. Set a product variable if you need a value pinned regardless.
+An option counts as passed when it is in the options you gave the constructor, even at its default value. Options you did not pass rank last, so a variable or a token themes them. `--apx-font-family` sets `fontFamily` the same way.
 
 ### Named themes
 
-`registerTheme` from `@apex/commons` records a named set of tokens on a registry shared by the whole family, so a brand theme registered once from any product is resolvable by name from all of them:
+`registerTheme` from `apex-commons` records a named set of tokens on a registry shared by the whole family, so a brand theme registered once from any product is resolvable by name from all of them:
 
 ```js
-import {registerTheme} from '@apex/commons';
+import {registerTheme} from 'apex-commons';
 
 registerTheme('acme', {
   tokens: {accent: '#5b21b6', fore: '#101828', grid: '#e4e7ec', surface: '#ffffff'},
@@ -807,3 +841,19 @@ Reference it through the `theme` option. `'light'`, `'dark'` and `'custom'` keep
 ```js
 new ApexTree(el, {theme: 'acme'});
 ```
+
+### Design systems (Ignite UI)
+
+Ignite UI theming is an add-on. Load it once and trees follow the Ignite UI theme on the page: text, borders, the accent, the font, surfaces, light or dark.
+
+```js
+import 'apextree/ignite-ui';
+```
+
+Without a bundler, load `apextree.ignite-ui.min.js` with a script tag, before or after `apextree.min.js`. Load it before the first render: a tree rendered earlier picks it up on its next `render()` or `refreshTokens()`. `designSystem: false` turns it off for one tree. Without the add-on the `--ig-*` tokens are ignored, with no error; the `--apx-*` tokens work either way.
+
+The add-on also themes ApexSankey and ApexGantt on the same page; with several of them, load it from the newest package. ApexCharts charts take their own add-on, `apexcharts/features/ignite-ui`. That one themes trees as well, but from a script tag only once `apexcharts.js` has loaded, so on a script-tag page load `apextree.ignite-ui.min.js` (or `apex-commons.ignite-ui.min.js`) for the trees.
+
+With the add-on loaded, on a page that loads an Ignite UI theme, the tree reads its tokens as the lowest-ranked layer above the built-in defaults: text from `--ig-gray-800`, borders and edges from `--ig-gray-300`, the hover, badge and focus-ring accent from `--ig-primary-seed`, `fontFamily` from `--ig-font-family`, (from Ignite UI 7.5.0) node and command palette surfaces from `--ig-surface-raised` and `--ig-surface-overlay`, the [card colours](#card-colours) from its gray steps, and the focus mode's dim, when nothing behind the tree paints, from its paper. Anything above it (an option you passed, an `--apex-tree-*` variable, an `--apx-*` token, the `'dark'` preset you named) still wins.
+
+When the sheet declares a dark variant and you did not pass `theme`, the tree renders `'dark'`, with the design system's colours over the dark preset's. Text and border colours apply only while the tree's theme matches the sheet's variant. Turn the layer off with `designSystem: false`, or every token read with `tokens: false`.

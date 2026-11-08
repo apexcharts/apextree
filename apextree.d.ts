@@ -122,6 +122,24 @@ declare class ApexTree extends BaseChart {
      * ```
      */
     destroy(): void;
+    /**
+     * Re-read the theme and repaint the tree with it, at the current zoom.
+     *
+     * The tree reads its `--apex-tree-*` variables, the `--apx-*` tokens, the
+     * registered theme and the page's design system on every render. Call this
+     * when they change without one: the page swapped a stylesheet (an Ignite UI
+     * light/dark switch, say), toggled a class that sets the variables, or
+     * loaded the `apextree/ignite-ui` add-on after the first render. Nodes,
+     * expanded cards, selection, focus mode and the active path are kept. A
+     * no-op before `render()`.
+     *
+     * @example
+     * ```ts
+     * themeLink.href = 'themes/dark/material.css';
+     * themeLink.onload = () => tree.refreshTokens();
+     * ```
+     */
+    refreshTokens(): void;
     private setupElementDimensions;
     /**
      * Handle watermark display based on license validation
@@ -385,9 +403,30 @@ export declare interface CommonOptions {
      * built-in CSS variable injection so host-page variables win cleanly. Any
      * other string names a theme on the shared family registry and behaves like
      * `'custom'` plus that theme's `--apx-*` tokens.
+     *
+     * Left unset, the theme follows a page design system that declares a dark
+     * variant (Ignite UI's `--ig-theme-variant: dark`, with the
+     * `apextree/ignite-ui` add-on loaded): the tree renders `'dark'`, with the
+     * design system's colours ranking above the dark preset's. A theme you pass
+     * is always kept.
      * @default 'light'
      */
     readonly theme: TreeTheme;
+    /**
+     * `false` stops the tree reading the shared `--apx-*` family tokens and the
+     * page's design system (including its light or dark variant). Options,
+     * `--apex-tree-*` variables and a registered theme's tokens still apply.
+     * @default true
+     */
+    readonly tokens?: boolean;
+    /**
+     * `false` stops the tree reading the page's design system (Ignite UI's
+     * `--ig-*` tokens, including its variant). The `--apx-*` family tokens still
+     * apply. Has an effect only while the `apextree/ignite-ui` add-on is loaded:
+     * without it the tree reads no design system.
+     * @default true
+     */
+    readonly designSystem?: boolean;
     /** Internal SVG viewport height in pixels. @default 600 */
     readonly viewPortHeight: number;
     /** Internal SVG viewport width in pixels. @default 800 */
@@ -637,11 +676,21 @@ export declare interface FontOptions {
 
 declare class Graph extends Paper {
     options: TreeOptions;
+    /** The option keys the page passed: only those outrank CSS variables and family tokens. */
+    private readonly explicitOptions?;
     private data;
     private graph;
     private nodeMap;
     /** Options resolved with CSS custom property overrides for the current render pass. */
     private renderOptions;
+    /** Keyboard focus ring colour resolved for the current render; `''` keeps the built-in one. */
+    private focusRingColor;
+    /** The dim's surface from the family layers for this render; `''` keeps the built-in one. */
+    private paperColor;
+    /** The card slots the family layers filled on the container this render; all `''` without a design system. */
+    private cardFamilyColors;
+    /** Set while `refreshTokens()` re-renders, so pinned node positions stay put. */
+    private refreshingTokens;
     /** Resolved, localized user-facing strings. Recomputed when options change. */
     private messages;
     /** Keyboard navigator instance (created lazily when a11y is enabled). */
@@ -699,7 +748,9 @@ declare class Graph extends Paper {
      * out so the user can retry.
      */
     private lazyResolvedNodes;
-    constructor(element: HTMLElement, options: TreeOptions, chartContext: ChartContext);
+    constructor(element: HTMLElement, options: TreeOptions, chartContext: ChartContext, 
+    /** The option keys the page passed: only those outrank CSS variables and family tokens. */
+    explicitOptions?: ReadonlySet<keyof CommonOptions | keyof EdgeOptions | keyof FontOptions | keyof NodeOptions | keyof TooltipOptions> | undefined);
     /** Resolved, localized strings for this chart (English defaults + `locale.messages`). */
     getMessages(): TreeMessages;
     /** Whether the current `locale.direction` resolves to right-to-left. */
@@ -1171,6 +1222,27 @@ declare class Graph extends Paper {
      * engine so its geometry follows the live spring positions of its endpoints.
      */
     private reconcileEdges;
+    /**
+     * Resolve this render's styling: the theme (an unset one follows a dark
+     * design-system variant), then the theme preset's control styles, then every
+     * styling option through the family chain (see `resolveTreeStyle`).
+     *
+     * The theme attribute goes on before the options are read, so page rules
+     * scoped to `[data-apex-tree-theme]` reach them.
+     */
+    private resolveStyle;
+    /**
+     * Re-read the theme: the `--apex-tree-*` variables, the `--apx-*` tokens,
+     * the registered theme and the page's design system (including its light
+     * or dark variant), then repaint the tree with them at the current zoom.
+     *
+     * The tree reads them on every render, so call this only when they change
+     * without one: the page swapped a stylesheet, toggled a class that sets the
+     * variables, or loaded the `apextree/ignite-ui` add-on after the first
+     * render. Nodes, expanded cards, selection, focus mode and the active path
+     * are kept; the camera does not move. A no-op before the first render.
+     */
+    refreshTokens(): void;
     /** Apply root ARIA + (re)build the keyboard navigator after a full render. */
     private applyA11y;
 }
@@ -1920,9 +1992,9 @@ export declare type TreeSelectionMode = 'multi' | 'single' | false;
  *
  * The three built-in values behave as they always have. Any other string is
  * taken as the name of a theme registered on the shared family registry
- * (`registerTheme` from `@apex/commons`, the same one the charts use): the tree
- * injects nothing for it, exactly as for `'custom'`, and its `--apx-*` tokens
- * are resolved one layer below explicit configuration. The name is always
+ * (`registerTheme` from `apex-commons`, the same one the charts use): the tree
+ * injects nothing for it, exactly as for `'custom'`, and its tokens rank with
+ * the `'dark'` preset, below the `--apx-*` CSS tokens. The name is always
  * written to `data-apex-tree-theme` on the container, so host CSS can select on
  * it either way.
  */
