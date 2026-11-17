@@ -65,7 +65,7 @@ The layout can be configured by passing a second argument to `ApexTree` with the
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `width` | `number \| string` | `'100%'` | Width of the canvas. Accepts a pixel number or CSS percentage string. |
-| `height` | `number \| string` | `'auto'` | Height of the canvas. `'auto'` sizes to content. |
+| `height` | `number \| string` | `'auto'` | Height of the canvas. Accepts a pixel number or CSS percentage string, independently of `width`. `'auto'` derives it from the width (width / 1.6, in the width's unit). |
 | `viewPortWidth` | `number` | `800` | Internal SVG viewport width in pixels. |
 | `viewPortHeight` | `number` | `600` | Internal SVG viewport height in pixels. |
 | `direction` | `'top' \| 'bottom' \| 'left' \| 'right' \| 'radial'` | `'top'` | Direction the tree grows from the root node. `'radial'` places the root at the centre with each level on a ring radiating outward. |
@@ -320,7 +320,7 @@ const tree = new ApexTree(el, {
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `a11y` | `{ enabled?: boolean, label?: string }` | `{ enabled: true, label: 'Organizational chart' }` | WCAG 2.1 AA accessibility. Adds ARIA tree semantics, keyboard navigation, and visible focus indicators. Set `label` to customise the SVG `aria-label`. |
+| `a11y` | `{ enabled?: boolean, label?: string }` | `{ enabled: true, label: 'Organizational chart' }` | WCAG 2.1 AA accessibility. Adds ARIA tree semantics, keyboard navigation, and visible focus indicators. The tree is one tab stop: Tab and Shift+Tab move focus in and out of it, arrow keys, Home, End and type-ahead move between nodes. Set `label` to customise the SVG `aria-label`. |
 
 ### Localization & RTL
 
@@ -750,7 +750,7 @@ themeLink.onload = () => tree.refreshTokens();
 
 | Method | Description |
 | --- | --- |
-| `destroy()` | Tear the tree down: stop the spring animation loop, detach every listener the graph and its controls installed, and release the chart context. Call this before dropping your reference to the instance (a component unmount, a route change). Idempotent. |
+| `destroy()` | Tear the tree down: stop the spring animation loop, detach every listener the graph and its controls installed, and release the chart context. The container's inline `width`, `height` and `position` go back to what they were before the tree set them, so a new tree in the same element sizes from its container. Call this before dropping your reference to the instance (a component unmount, a route change). Idempotent. |
 
 ```js
 const tree = new ApexTree(el, options);

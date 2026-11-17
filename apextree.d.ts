@@ -68,6 +68,8 @@ declare class ApexTree extends BaseChart {
     private searchControl;
     private breadcrumbControl;
     private commandPaletteControl;
+    /** The host's inline width/height/position from before the tree set them; `null` once restored. */
+    private hostStyle;
     /**
      * Create a new ApexTree instance.
      *
@@ -111,7 +113,10 @@ declare class ApexTree extends BaseChart {
      * Call this before dropping your reference to the instance (a component
      * unmount, a route change). Until this override existed, `destroy()` only
      * released the chart context, so a tree torn down mid-animation left its
-     * frame loop running against detached DOM. Idempotent.
+     * frame loop running against detached DOM. The host element's inline
+     * width, height and position go back to what they were before the tree set
+     * them, so a tree rebuilt in the same element (on resize, say) sizes from
+     * its container rather than from the old tree's size. Idempotent.
      *
      * @example
      * ```ts
@@ -140,7 +145,20 @@ declare class ApexTree extends BaseChart {
      * ```
      */
     refreshTokens(): void;
+    /**
+     * Write the host's inline width, height and position, remembering what the
+     * page had there first so `destroy()` can hand the element back unchanged.
+     * Width and height each keep their own unit: a number is pixels and an
+     * `'N%'` string is a percentage. `height: 'auto'` is the width divided by
+     * 1.6, in the width's unit.
+     */
     private setupElementDimensions;
+    /**
+     * Put back the host's inline width, height and position as they were before
+     * the constructor set them. A value the page changed since is left alone.
+     * Runs once, so a late second `destroy()` cannot undo a newer tree's size.
+     */
+    private restoreElementDimensions;
     /**
      * Handle watermark display based on license validation
      */
@@ -372,7 +390,11 @@ export declare interface CommonOptions {
     readonly enableZoomPan: boolean;
     /** Stack leaf nodes vertically instead of spreading them horizontally. @default false */
     readonly groupLeafNodes: boolean;
-    /** Height of the canvas. Use `'auto'` to size to content. @default 'auto' */
+    /**
+     * Height of the canvas: a pixel number or a CSS percentage string, resolved
+     * independently of `width`. `'auto'` derives it from the width (width / 1.6,
+     * in the width's unit). @default 'auto'
+     */
     readonly height: number | string;
     /** Highlight the hovered node and its connecting edges. @default true */
     readonly highlightOnHover: boolean;
